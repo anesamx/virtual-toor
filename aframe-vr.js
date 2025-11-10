@@ -1,8 +1,8 @@
 
 const scenes = {
-  '1': { image: './public/1.jpg', hotspots: { '2': { text: 'Go to scene 2', position: '-3 1.5 -1' }, '3': { text: 'Go to scene 3', position: '3 1.5 -1' } } },
-  '2': { image: './public/2.jpg', hotspots: { '1': { text: 'Go back to scene 1', position: '3 1.5 -1' } } },
-  '3': { image: './public/3.jpg', hotspots: { '1': { text: 'Go back to scene 1', position: '-3 1.5 -1' } } }
+  '1': { image: './public/1.jpg', hotspots: { '2': { text: 'bedroom', position: '-4.2 1.5 -2' }, '3': { text: 'bath room', position: '-1.75 1.5 -4' } } },
+  '2': { image: './public/2.jpg', hotspots: { '1': { text: 'living room', position: '4 1.5 1.1' } } },
+  '3': { image: './public/3.jpg', hotspots: { '1': { text: 'living room', position: '-2 1.5 4' } } }
 };
 
 let currentScene = '1';
