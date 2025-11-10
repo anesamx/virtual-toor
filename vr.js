@@ -14,7 +14,7 @@ function enterVRTour() {
                 "pitch": -3,
                 "yaw": 0,
                 "type": "equirectangular",
-                "panorama": "/public/1.jpg",
+                "panorama": "./public/1.jpg",
                 "hotSpots": [
                     {
                         "pitch": -2,
@@ -31,7 +31,7 @@ function enterVRTour() {
                 "pitch": -5,
                 "yaw": 180,
                 "type": "equirectangular",
-                "panorama": "/public/2.jpg",
+                "panorama": "./public/2.jpg",
                 "hotSpots": [
                     {
                         "pitch": -3,
