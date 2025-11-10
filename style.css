@@ -1,98 +1,116 @@
+
 :root {
-  --primary-color: #f0f0f0;
-  --secondary-color: #ffffff;
-  --text-color: #333;
-  --border-radius: 15px;
-  --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --primary-color: #ffffff;
+  --secondary-color: #00A9FF; /* Updated to blue */
+  --background-color: #121212;
+  --surface-color: #1e1e1e;
+  --on-primary: #000000;
+  --on-surface: #ffffff;
 }
 
 body {
-  font-family: sans-serif;
+  background-color: var(--background-color);
+  color: var(--on-surface);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   margin: 0;
-  background-color: var(--primary-color);
-  color: var(--text-color);
-}
-
-header {
-  background-color: var(--secondary-color);
-  padding: 1rem;
-  box-shadow: var(--box-shadow);
-}
-
-nav {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-}
-
-nav a {
-  text-decoration: none;
-  color: var(--text-color);
-  font-weight: bold;
+  line-height: 1.6;
 }
 
 .hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
+  min-height: 60vh;
   padding: 4rem 2rem;
+  background-image: linear-gradient(rgba(18, 18, 18, 0.8), rgba(18, 18, 18, 1)), url('./public/1.jpg');
+  background-size: cover;
+  background-position: center;
 }
 
-.hero h1 {
-  font-size: 3rem;
+.hero-text h1 {
+  font-size: 3.5rem;
   margin-bottom: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.05em;
 }
 
-.hero p {
-  font-size: 1.2rem;
+.hero-text p {
+  font-size: 1.25rem;
+  max-width: 600px;
   margin-bottom: 2rem;
+  color: rgba(255, 255, 255, 0.8);
 }
 
-.hero button {
-  background-color: var(--text-color);
+.button-container {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.button {
+  text-decoration: none;
+  color: var(--on-primary);
+  padding: 1rem 2.5rem;
+  border-radius: 50px;
+  font-weight: 600;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: 2px solid var(--secondary-color);
+}
+
+.button:hover {
+  transform: translateY(-5px);
+}
+
+.button.phone-tour {
+  background-color: transparent;
   color: var(--secondary-color);
-  border: none;
-  padding: 1rem 2rem;
-  border-radius: var(--border-radius);
-  font-size: 1rem;
-  cursor: pointer;
-  transition: transform 0.2s;
+  box-shadow: 0 0 15px rgba(0, 169, 255, 0.4);
 }
 
-.hero button:hover {
-  transform: scale(1.05);
+.button.phone-tour:hover {
+  box-shadow: 0 0 25px rgba(0, 169, 255, 0.8), 0 0 35px rgba(0, 169, 255, 0.6);
+  background-color: var(--secondary-color);
+  color: var(--on-primary);
+}
+
+.button.vr-tour {
+  background-color: var(--secondary-color);
+  color: var(--on-primary);
+  box-shadow: 0 0 20px rgba(0, 169, 255, 0.5);
+}
+
+.button.vr-tour:hover {
+  box-shadow: 0 0 30px rgba(0, 169, 255, 0.8), 0 0 40px rgba(0, 169, 255, 0.6);
 }
 
 .features {
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 2rem;
-  padding: 2rem;
-  flex-wrap: wrap;
+  padding: 4rem 2rem;
+  max-width: 1200px;
+  margin: auto;
+}
+
+feature-card {
+  background-color: var(--surface-color);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  display: block;
+  border: 2px solid transparent;
+}
+
+feature-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--secondary-color);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), 0 0 20px rgba(0, 169, 255, 0.5);
 }
 
 footer {
   text-align: center;
-  padding: 1rem;
-  background-color: var(--secondary-color);
-  box-shadow: var(--box-shadow);
-}
-
-#vr-tour {
-    position: relative;
-    height: 100vh;
-}
-
-#exit-vr-btn {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    z-index: 1000;
-    padding: 10px;
-    background: white;
-    border: none;
-    cursor: pointer;
-}
-
-#panorama {
-    width: 100%;
-    height: 100%;
+  padding: 2rem;
+  background-color: var(--surface-color);
 }
