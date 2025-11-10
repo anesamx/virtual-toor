@@ -2,25 +2,33 @@
 
 ## Overview
 
-This document outlines the structure, design, and features of a modern, responsive landing page.
+This document outlines the structure, design, and features of a modern, responsive landing page with two distinct virtual tour experiences.
 
 ## Current State
 
-The project is a simple HTML page with a heading and a button.
+The project includes a landing page, a 360-degree photo tour using Pannellum, and the beginning of a true VR experience using A-Frame.
 
-## Plan
+### Implemented Features
 
-1.  **HTML Structure:**
-    *   Create a header with a navigation bar.
-    *   Add a hero section with a title, subtitle, and a call-to-action button.
-    *   Add a section with three feature cards, each containing a placeholder image and a description.
-    *   Create a footer with social media links.
-2.  **Styling (style.css):**
-    *   Use a light color palette with soft, rounded shapes.
-    *   Implement a responsive layout using flexbox or grid.
-    *   Style the header, navigation, hero section, feature cards, and footer.
-    *   Use CSS variables for colors and fonts for easy customization.
-    *   Add subtle shadows and transitions for a modern look.
-3.  **JavaScript (main.js):**
-    *   Create a custom element for the feature cards to demonstrate Web Components.
-    *   Add smooth scrolling for navigation links.
+*   **Landing Page:** A responsive landing page with a hero section, feature cards, and footer.
+*   **360 Photo Tour:** A panorama-based tour implemented with `Pannellum` in `vr.html`.
+
+## Current Task: Add A-Frame VR Experience
+
+I will now add a second, separate VR experience for VR headsets using the A-Frame framework, keeping the existing photo tour.
+
+**Plan:**
+
+1.  **Modify `index.html`:**
+    *   Add a new button labeled "A-Frame VR Tour" to the hero section.
+    *   This button will link to a new `aframe-vr.html` page.
+2.  **Create `aframe-vr.html`:**
+    *   This file will be the entry point for the A-Frame experience.
+    *   It will import the A-Frame library from the official CDN.
+    *   The scene will be constructed using A-Frame's declarative HTML tags.
+3.  **Build the A-Frame Scene:**
+    *   Use `<a-sky>` to set a 360-degree panoramic background using the existing images.
+    *   Add an interactive element (e.g., a 3D box) that the user can gaze at to navigate between the "living room" and "kitchen" scenes.
+    *   Add text elements to guide the user.
+4.  **Create `aframe-vr.js`:**
+    *   Implement the JavaScript logic to handle scene navigation when the user interacts with the navigation elements.

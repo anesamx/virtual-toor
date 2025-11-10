@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>A-Frame VR Tour</title>
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="aframe-vr.js" defer></script>
+</head>
+<body>
+    <a-scene>
+        <a-sky src="" id="sky"></a-sky>
+
+        <a-entity id="nav-vr-container" position="0 1.6 -2">
+            <!-- Navigation hotspots will be dynamically added here -->
+        </a-entity>
+
+        <a-camera>
+            <a-cursor></a-cursor>
+        </a-camera>
+    </a-scene>
+</body>
+</html>
