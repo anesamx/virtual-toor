@@ -10,7 +10,7 @@ let currentScene = '1';
 function createHotspot(scene, hotspotId) {
   const hotspot = document.createElement('a-entity');
   hotspot.setAttribute('geometry', 'primitive: sphere; radius: 0.2');
-  hotspot.setAttribute('material', 'color: red; transparent: true; opacity: 0.5');
+  hotspot.setAttribute('material', 'color:grey; transparent: true; opacity: 0.5');
   hotspot.setAttribute('position', scenes[scene].hotspots[hotspotId].position);
   hotspot.setAttribute('event-set__enter', '_event: mouseenter; scale: 1.2 1.2 1.2');
   hotspot.setAttribute('event-set__leave', '_event: mouseleave; scale: 1 1 1');
