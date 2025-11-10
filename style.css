@@ -46,7 +46,7 @@ nav a {
   margin-bottom: 2rem;
 }
 
-.hero button {
+.hero button, a.button {
   background-color: var(--text-color);
   color: var(--secondary-color);
   border: none;
@@ -55,9 +55,11 @@ nav a {
   font-size: 1rem;
   cursor: pointer;
   transition: transform 0.2s;
+  text-decoration: none;
+  display: inline-block;
 }
 
-.hero button:hover {
+.hero button:hover, a.button:hover {
   transform: scale(1.05);
 }
 
