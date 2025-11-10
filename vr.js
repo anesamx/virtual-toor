@@ -1,9 +1,6 @@
 let viewer;
 
 function enterVRTour() {
-    document.getElementById('landing-page').style.display = 'none';
-    document.getElementById('vr-tour').style.display = 'block';
-    
     // Initialize Pannellum
     viewer = pannellum.viewer('panorama', {
         "default": {
@@ -56,4 +53,4 @@ function exitVRTour() {
     window.location.href = "index.html";
 }
 
-ent VRTour();
+enterVRTour();
