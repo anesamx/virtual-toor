@@ -11,9 +11,9 @@ const Landing = ({ onEnterVR }) => {
 
       <main className="container mx-auto px-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <img src="/placeholder-1.jpg" alt="Project image 1" className="w-full h-auto rounded-lg shadow-lg" />
-          <img src="/placeholder-2.jpg" alt="Project image 2" className="w-full h-auto rounded-lg shadow-lg" />
-          <img src="/placeholder-3.jpg" alt="Project image 3" className="w-full h-auto rounded-lg shadow-lg" />
+          <img src="../public/placeholder-1.jpg" alt="Project image 1" className="w-full h-auto rounded-lg shadow-lg" />
+          <img src="../public/placeholder-2.jpg" alt="Project image 2" className="w-full h-auto rounded-lg shadow-lg" />
+          <img src="../public/placeholder-3.jpg" alt="Project image 3" className="w-full h-auto rounded-lg shadow-lg" />
         </div>
 
         <div className="text-center mt-16">
