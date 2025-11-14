@@ -64,16 +64,19 @@
       }
        #editor-sidebar button:hover { background-color: #218838; }
 
-      #hotspot-details-container .detail-item {
+      #hotspot-details-container .detail-item,
+      .scene-selector-container {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 10px;
       }
-      #hotspot-details-container label {
+      #hotspot-details-container label,
+      .scene-selector-container label {
         font-weight: bold;
       }
-      #hotspot-details-container input {
+      #hotspot-details-container input,
+      #scene-selector {
         width: 120px;
         background-color: #333;
         color: white;
@@ -94,20 +97,27 @@
       
       <a-entity id="nav-vr-container"></a-entity>
 
-      <a-camera>
+      <a-camera wasd-controls-enabled="false">
         <a-cursor raycaster="objects: .clickable, .placement-target"></a-cursor>
       </a-camera>
 
     </a-scene>
 
     <div id="editor-sidebar">
-      <h3>Edit Hotspots</h3>
+      <h3>Edit Mode</h3>
+      
+      <div class="scene-selector-container" style="margin-bottom: 20px; border-bottom: 1px solid #555; padding-bottom: 20px;">
+        <label for="scene-selector">Go to Scene</label>
+        <select id="scene-selector"></select>
+      </div>
+      
+      <h4>Edit Hotspots</h4>
       <div id="scene-list-container" style="max-height: 40%; overflow-y: auto;">
         <p>Loading hotspots...</p>
       </div>
 
       <div id="hotspot-details-container" style="display: none; margin-top: 20px; border-top: 1px solid #555; padding-top: 15px;">
-          <h4>Selected Hotspot</h4>
+          <h5>Selected Hotspot</h5>
           <div class="detail-item">
               <label for="hotspot-yaw">Yaw</label>
               <input type="number" id="hotspot-yaw" step="0.1">

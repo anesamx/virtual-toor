@@ -1,5 +1,5 @@
 import { db } from './firebase-init.js';
-import { collection, query, where, limit, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+import { collection, query, where, getDocs, doc, updateDoc, orderBy } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
 // --- Register a custom billboard component for better text orientation ---
 AFRAME.registerComponent('billboard', {
@@ -7,8 +7,6 @@ AFRAME.registerComponent('billboard', {
     this.camera = this.el.sceneEl.camera.el;
   },
   tick: function () {
-    // On each frame, copy the camera's rotation to the text element.
-    // This ensures it always faces the user without flipping upside down.
     this.el.object3D.quaternion.copy(this.camera.object3D.quaternion);
   }
 });
@@ -26,7 +24,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const isEditMode = urlParams.get('edit') === 'true';
 
 // --- DOM ELEMENTS (for editor) ---
-let yawInput, pitchInput, radiusInput, detailsContainer;
+let yawInput, pitchInput, radiusInput, detailsContainer, sceneSelector;
 
 // --- COORDINATE CONVERSION UTILITIES ---
 
@@ -52,10 +50,19 @@ function cartesianToSpherical(position) {
 async function updateScene() {
     const sky = document.getElementById('sky');
     const navContainer = document.getElementById('nav-vr-container');
-    navContainer.innerHTML = '';
+    navContainer.innerHTML = ''; // Clear old hotspots
+    
+    // Reset editor state
+    if (isEditMode) {
+      if (selectedHotspotEntity) {
+          selectedHotspotEntity.setAttribute('material', 'color', '#E0E0E0');
+      }
+      selectedHotspotEntity = null;
+      detailsContainer.style.display = 'none';
+    }
 
     const scenesRef = collection(db, "scenes");
-    const qScene = query(scenesRef, where("sceneId", "==", currentSceneId), limit(1));
+    const qScene = query(scenesRef, where("sceneId", "==", currentSceneId));
     const sceneQuerySnapshot = await getDocs(qScene);
 
     if (sceneQuerySnapshot.empty) {
@@ -64,6 +71,7 @@ async function updateScene() {
     }
     const sceneDoc = sceneQuerySnapshot.docs[0];
     sky.setAttribute('src', sceneDoc.data().image);
+    if (isEditMode) sceneSelector.value = currentSceneId;
 
     const hotspotsRef = collection(db, "hotspots");
     const qHotspots = query(hotspotsRef, where('sourceSceneId', '==', currentSceneId));
@@ -80,12 +88,13 @@ async function updateScene() {
         populateSidebar(hotspotEntities);
     }
     
+    // Refresh raycaster to detect new hotspots
     setTimeout(() => {
         const cursorEl = document.querySelector('a-cursor');
         if (cursorEl) {
             cursorEl.components.raycaster.refreshObjects();
         }
-    }, 100);
+    }, 200); 
 }
 
 function createHotspotElement(docId, hotspotData) {
@@ -95,7 +104,7 @@ function createHotspotElement(docId, hotspotData) {
 
     const hotspotSize = hotspotData.size || DEFAULT_HOTSPOT_SIZE;
     hotspot.setAttribute('geometry', `primitive: sphere; radius: ${hotspotSize}`);
-    hotspot.dataset.size = hotspotSize; // Store for later access
+    hotspot.dataset.size = hotspotSize;
 
     hotspot.setAttribute('material', 'color: #E0E0E0; transparent: true; opacity: 0.6');
 
@@ -115,17 +124,24 @@ function createHotspotElement(docId, hotspotData) {
     hotspot.setAttribute('event-set__enter', '_event: mouseenter; scale: 1.2 1.2 1.2');
     hotspot.setAttribute('event-set__leave', '_event: mouseleave; scale: 1 1 1');
 
-    if (!isEditMode) {
-        hotspot.addEventListener('click', (e) => {
-            e.stopPropagation();
+    hotspot.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (isEditMode) {
+            // In edit mode, clicking a hotspot selects it for editing
+            const radio = document.querySelector(`input[name="hotspot"][value="${docId}"]`);
+            if (radio) {
+                radio.checked = true;
+                radio.dispatchEvent(new Event('change'));
+            }
+        } else {
+            // In viewer mode, clicking a hotspot navigates to the target scene
             currentSceneId = hotspotData.targetSceneId;
             updateScene();
-        });
-    }
+        }
+    });
 
     const text = document.createElement('a-text');
     text.setAttribute('value', hotspotData.text);
-    // Use the new billboard component instead of look-at
     text.setAttribute('billboard', ''); 
     text.setAttribute('scale', '0.5 0.5 0.5');
     text.setAttribute('position', '0 0.4 0');
@@ -136,7 +152,7 @@ function createHotspotElement(docId, hotspotData) {
 
 // --- EDITOR LOGIC ---
 
-function initializeEditor() {
+async function initializeEditor() {
     const cursorEl = document.querySelector('a-cursor');
     const saveButton = document.getElementById('save-hotspot-button');
 
@@ -144,7 +160,27 @@ function initializeEditor() {
     pitchInput = document.getElementById('hotspot-pitch');
     radiusInput = document.getElementById('hotspot-radius');
     detailsContainer = document.getElementById('hotspot-details-container');
+    sceneSelector = document.getElementById('scene-selector');
     document.getElementById('editor-sidebar').style.display = 'flex';
+
+    // --- Populate Scene Selector ---
+    const scenesRef = collection(db, "scenes");
+    const q = query(scenesRef, orderBy("sceneId"));
+    const querySnapshot = await getDocs(q);
+    querySnapshot.forEach((doc) => {
+        const scene = doc.data();
+        const option = document.createElement('option');
+        option.value = scene.sceneId;
+        option.textContent = scene.name || `Scene ${scene.sceneId}`; // Fallback to ID
+        sceneSelector.appendChild(option);
+    });
+    sceneSelector.value = currentSceneId;
+
+    // --- Event Listeners ---
+    sceneSelector.addEventListener('change', () => {
+        currentSceneId = sceneSelector.value;
+        updateScene();
+    });
 
     cursorEl.addEventListener('click', function (evt) {
         if (!selectedHotspotEntity) return;
@@ -178,7 +214,7 @@ function initializeEditor() {
             alert("Please select a hotspot and ensure its position is set.");
             return;
         }
-
+        
         saveButton.textContent = "Saving...";
         saveButton.disabled = true;
 
@@ -187,17 +223,13 @@ function initializeEditor() {
 
         try {
             const dataToUpdate = { coordination: stagedPosition };
-            if (stagedSize !== null) {
-                dataToUpdate.size = stagedSize;
-            }
-
+            if (stagedSize !== null) dataToUpdate.size = stagedSize;
+            
             await updateDoc(hotspotRef, dataToUpdate);
             alert('Success! Position and size saved.');
 
             selectedHotspotEntity.dataset.angles = JSON.stringify(stagedPosition);
-            if (stagedSize !== null) {
-                selectedHotspotEntity.dataset.size = stagedSize;
-            }
+            if (stagedSize !== null) selectedHotspotEntity.dataset.size = stagedSize;
             
             selectedHotspotEntity.setAttribute('material', 'color', '#E0E0E0');
             const radio = document.querySelector(`input[name="hotspot"]:checked`);
@@ -286,10 +318,11 @@ function populateSidebar(hotspotEntities) {
 // --- INITIALIZATION ---
 
 async function main() {
-    await updateScene();
     if (isEditMode) {
-        initializeEditor();
+        await initializeEditor();
     }
+    await updateScene();
+    
     const vrButton = document.getElementById('vr-button');
     vrButton.addEventListener('click', () => {
         document.querySelector('a-scene').enterVR();

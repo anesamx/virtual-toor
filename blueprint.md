@@ -1,44 +1,53 @@
-# Blueprint: Immersive Tour (Desktop & VR)
+# A-Frame Virtual Tour Creator
 
-## Overview
+## **Overview**
 
-This project is a flexible 360-degree virtual tour application designed with a **desktop-first** architecture, while also providing a seamless **VR mode** on demand. Users can navigate between scenes by clicking hotspots. A simple and intuitive in-browser editor allows for the visual repositioning of these hotspots using a standard mouse, with changes saved directly to Firestore.
+This project is an interactive virtual tour application built with A-Frame and Firebase. It allows users to navigate between 360-degree panoramic scenes by clicking on interactive hotspots. The application features a dedicated "Edit Mode" that enables authorized users to visually create, move, and resize hotspots directly within the 3D environment.
 
-## Architecture & Design
+All scene and hotspot data is stored and managed in a Firestore database, allowing for real-time updates and persistence.
 
-### Core Principles
+---
 
-1.  **Desktop First:** The primary user experience is optimized for desktop users with a mouse. The interface is clean, intuitive, and does not rely on VR-specific controls.
-2.  **VR on Demand:** A UI button allows users to enter an immersive VR mode at any time, providing a native headset experience.
-3.  **Clean Separation:** The application logic (JavaScript) is cleanly separated from the page structure (HTML). UI elements like buttons are standard HTML, not A-Frame entities, for maximum reliability.
+## **Core Features & Implementation**
 
-### Technology Stack
+### **1. Scene & Hotspot Loading**
+- **Technology**: Firestore Database, A-Frame
+- **Description**: The application fetches scene information (e.g., background image) and hotspot data from a Firestore database. On startup, it loads the initial scene and dynamically creates hotspot entities based on the retrieved data.
+- **File**: `aframe-vr.js` (function: `updateScene`)
 
-- **3D/VR Framework:** A-Frame
-- **Database:** Google Firestore
-- **Core Technologies:** HTML, CSS, JavaScript (ES Modules)
+### **2. Scene Navigation (Viewer Mode)**
+- **Technology**: A-Frame Events
+- **Description**: In viewer mode, clicking on a hotspot triggers a scene change. The application fetches the new scene's data and updates the environment, providing a seamless virtual tour experience.
+- **File**: `aframe-vr.js` (function: `createHotspotElement`)
 
-### Core Functionality
+### **3. Edit Mode**
+- **Technology**: URL Parameters (`?edit=true`), DOM manipulation
+- **Description**: The application can be launched in a special "Edit Mode" by appending `?edit=true` to the URL. This mode activates an editor sidebar and enables hotspot manipulation features.
+- **Files**: `aframe-vr.js`, `aframe-vr.html`
 
-1.  **360° Scene Viewing:** Displays panoramic images via an `<a-sky>` entity.
-2.  **Desktop Navigation:** Users navigate by clicking on hotspots with their standard mouse pointer.
-3.  **VR Mode:** An "Enter VR" button in the top-right corner activates A-Frame's VR mode for headset users.
-4.  **Editor (`?edit=true`):**
-    -   A mouse-driven "select-and-place" system allows for intuitive hotspot positioning.
-    -   **First Click (with mouse):** Selects a hotspot, highlighting it in yellow.
-    -   **Second Click (with mouse):** Moves the selected hotspot to the new clicked location.
-    -   A standard HTML "Save Positions" button in the top-left persists all changes to Firestore.
-5.  **Dynamic Data:** All scene and hotspot data is loaded from Firestore.
+### **4. Visual Hotspot Editor**
+- **Technology**: A-Frame Raycaster, DOM Events, CSS
+- **Description**: The editor sidebar allows for comprehensive control over hotspots.
+    - **Scene Jumper**: A dropdown menu allows the editor to instantly jump to any scene in the tour for modification.
+    - **Click-to-Select**: Clicking a hotspot directly in the 3D view will select it in the sidebar, loading its properties for editing.
+    - **Click-to-Place**: After selecting a hotspot, the user can click anywhere on the 360-degree background to instantly move the hotspot to that location.
+    - **Live Updates**: The "Yaw," "Pitch," and "Radius" (size) input fields in the sidebar update in real-time as the hotspot is moved or resized.
+    - **Save to Database**: Changes can be persisted to the Firestore database by clicking the "Save Selected" button.
+- **Files**: `aframe-vr.js` (functions: `initializeEditor`, `updateHotspotPosition`, `populateSidebar`), `aframe-vr.html`
 
-### Data Model
+### **5. Hotspot Properties**
+- **Position (Yaw/Pitch)**: Spherical coordinates determine the hotspot's placement on the scene's sphere. The editor includes a **+9 degree pitch offset** for more accurate visual placement.
+- **Size (Radius)**: The visual size of the hotspot bubble is configurable through the editor.
+- **Text Label**: Each hotspot has a text label that always faces the camera using a custom **billboard component**, which provides a smoother experience than the default `look-at` attribute.
 
-The application uses two main collections in Firestore:
+### **6. Camera Controls**
+- **Mouse Drag**: The primary method for looking around the scene.
+- **Keyboard Controls**: Standard WASD and arrow key movement have been **disabled** to prevent unintentional navigation and focus on the click-and-drag experience.
+- **File**: `aframe-vr.html` (`<a-camera wasd-controls-enabled="false">`)
 
-1.  **`scenes`**: `sceneId`, `name`, `image`
-2.  **`hotspots`**: `sourceSceneId`, `targetSceneId`, `text`, `coordination`
+---
 
-## Style & Design
+## **Current Plan**
 
--   **Hotspots:** Rendered as light grey (`#E0E0E0`) spheres with a subtle transparency to blend cleanly with the scene.
--   **Selection Highlight:** A selected hotspot in edit mode turns a clear `yellow` for unambiguous visual feedback.
--   **UI Buttons:** The "Enter VR" and "Save Positions" buttons are styled cleanly with rounded corners and hover effects for a modern, professional look.
+- **Status**: The core features for the visual editor and virtual tour functionality have been implemented with an improved, dropdown-based scene navigation system for efficient editing.
+- **Next Steps**: Awaiting further instructions or requests for new features or modifications.
