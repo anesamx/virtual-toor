@@ -1,66 +1,105 @@
+// --- GLOBALS ---
+let currentSceneId = "1"; // Default to scene "1"
 
-const scenes = {
-  '1': { image: './public/1.jpg', hotspots: { '2': { text: 'bedroom', position: '-4.2 1.5 -2' }, '3': { text: 'bath room', position: '-1.75 1.5 -4' } } },
-  '2': { image: './public/2.jpg', hotspots: { '1': { text: 'living room', position: '4 1.5 1.1' } } },
-  '3': { image: './public/3.jpg', hotspots: { '1': { text: 'living room', position: '-2 1.5 4' } } }
-};
-
-let currentScene = '1';
-
-// Check for edit mode
+// --- URL PARAMETERS ---
 const urlParams = new URLSearchParams(window.location.search);
 const isEditMode = urlParams.get('edit') === 'true';
 
-// Component to make entities draggable
+// --- DRAGGABLE COMPONENT (REWRITTEN FOR VR CURSOR) ---
 if (isEditMode) {
   AFRAME.registerComponent('draggable', {
     init: function () {
+      this.isDragging = false;
+      this.distance = 2.5; // How far the object is held from the camera
+
+      // On click, start dragging
       this.el.addEventListener('mousedown', () => {
-        if (this.el.is('dragging')) return;
+        this.isDragging = true;
         this.el.sceneEl.camera.el.setAttribute('look-controls', 'enabled', false);
-        this.el.addState('dragging');
+        this.el.setAttribute('material', 'color', '#FFC107'); // Highlight color
       });
 
+      // On release, stop dragging
       this.el.sceneEl.addEventListener('mouseup', () => {
-        this.el.sceneEl.camera.el.setAttribute('look-controls', 'enabled', true);
-        this.el.removeState('dragging');
+          if (this.isDragging) {
+            this.isDragging = false;
+            this.el.sceneEl.camera.el.setAttribute('look-controls', 'enabled', true);
+            this.el.setAttribute('material', 'color', 'grey'); // Revert color
+          }
       });
+    },
 
-      this.el.sceneEl.addEventListener('mousemove', (evt) => {
-        if (!this.el.is('dragging')) return;
+    // While dragging, update position on every frame
+    tick: function () {
+      if (this.isDragging) {
         const camera = this.el.sceneEl.camera;
-        const direction = new THREE.Vector3();
-        camera.getWorldDirection(direction);
-        const distance = this.el.object3D.position.distanceTo(camera.position);
-        const newPosition = new THREE.Vector3(evt.detail.intersection.point.x, evt.detail.intersection.point.y, evt.detail.intersection.point.z);
-        this.el.object3D.position.copy(newPosition);
-      });
+        const cameraPosition = new THREE.Vector3();
+        camera.getWorldPosition(cameraPosition);
+        
+        const cameraDirection = new THREE.Vector3();
+        camera.getWorldDirection(cameraDirection);
+
+        const newPosition = cameraPosition.add(cameraDirection.multiplyScalar(this.distance));
+        this.el.object3D.position.set(newPosition.x, newPosition.y, newPosition.z);
+      }
     }
   });
 }
 
-function createHotspot(scene, hotspotId) {
+// --- SCENE MANAGEMENT ---
+
+async function updateScene() {
+  const sky = document.getElementById('sky');
+  const navContainer = document.getElementById('nav-vr-container');
+  navContainer.innerHTML = ''; // Clear old hotspots
+
+  // 1. Fetch scene data
+  const sceneQuery = await db.collection('scenes').where('sceneId', '==', currentSceneId).limit(1).get();
+  if (sceneQuery.empty) {
+    console.error(`Scene with sceneId "${currentSceneId}" not found!`);
+    return;
+  }
+  const sceneDoc = sceneQuery.docs[0];
+  sky.setAttribute('src', sceneDoc.data().image);
+
+  // 2. Fetch hotspots for the scene
+  const hotspotsQuery = await db.collection('hotspots').where('sourceSceneId', '==', currentSceneId).get();
+  hotspotsQuery.forEach(hotspotDoc => {
+    const hotspot = createHotspot(hotspotDoc.id, hotspotDoc.data());
+    navContainer.appendChild(hotspot);
+  });
+}
+
+function createHotspot(docId, hotspotData) {
   const hotspot = document.createElement('a-entity');
+  hotspot.setAttribute('hotspot-db-id', docId);
   hotspot.setAttribute('geometry', 'primitive: sphere; radius: 0.2');
-  hotspot.setAttribute('material', 'color:grey; transparent: true; opacity: 0.5');
-  hotspot.setAttribute('position', scenes[scene].hotspots[hotspotId].position);
-  hotspot.setAttribute('hotspot-id', hotspotId);
+  hotspot.setAttribute('material', 'color: grey; transparent: true; opacity: 0.5');
+
+  // *** ERROR FIX ***
+  // Robustly handle position data, whether it's a string or an object
+  const pos = hotspotData.coordination;
+  if (typeof pos === 'object' && pos !== null) {
+    hotspot.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+  } else {
+    hotspot.setAttribute('position', pos);
+  }
 
   if (isEditMode) {
-    hotspot.setAttribute('draggable', '');
-    hotspot.setAttribute('event-set__enter', '_event: mouseenter; scale: 1.2 1.2 1.2; color: #FFC107');
-    hotspot.setAttribute('event-set__leave', '_event: mouseleave; scale: 1 1 1; color: grey');
+    hotspot.setAttribute('draggable', ''); // Enable VR dragging
+    hotspot.setAttribute('event-set__enter', '_event: mouseenter; scale: 1.2 1.2 1.2;');
+    hotspot.setAttribute('event-set__leave', '_event: mouseleave; scale: 1 1 1;');
   } else {
     hotspot.setAttribute('event-set__enter', '_event: mouseenter; scale: 1.2 1.2 1.2');
     hotspot.setAttribute('event-set__leave', '_event: mouseleave; scale: 1 1 1');
     hotspot.addEventListener('click', () => {
-      currentScene = hotspotId;
+      currentSceneId = hotspotData.targetSceneId;
       updateScene();
     });
   }
 
   const text = document.createElement('a-text');
-  text.setAttribute('value', scenes[scene].hotspots[hotspotId].text);
+  text.setAttribute('value', hotspotData.text);
   text.setAttribute('look-at', '[camera]');
   text.setAttribute('scale', '0.5 0.5 0.5');
   text.setAttribute('position', '0 0.4 0');
@@ -69,60 +108,72 @@ function createHotspot(scene, hotspotId) {
   return hotspot;
 }
 
-function updateScene() {
-  const sky = document.getElementById('sky');
+// --- DATA SAVING (Edit Mode) ---
+
+async function saveHotspotPositions() {
   const navContainer = document.getElementById('nav-vr-container');
+  const hotspotEntities = navContainer.children;
+  const batch = db.batch();
 
-  sky.setAttribute('src', scenes[currentScene].image);
-  navContainer.innerHTML = '';
+  for (let i = 0; i < hotspotEntities.length; i++) {
+    const hotspotEl = hotspotEntities[i];
+    const docId = hotspotEl.getAttribute('hotspot-db-id');
+    const newPosition = hotspotEl.getAttribute('position');
+    const newCoordString = `${newPosition.x.toFixed(2)} ${newPosition.y.toFixed(2)} ${newPosition.z.toFixed(2)}`;
 
-  for (const hotspotId in scenes[currentScene].hotspots) {
-    const hotspot = createHotspot(currentScene, hotspotId);
-    navContainer.appendChild(hotspot);
+    const hotspotRef = db.collection('hotspots').doc(docId);
+    batch.update(hotspotRef, { coordination: newCoordString });
+  }
+
+  try {
+    await batch.commit();
+    alert('Success! New positions saved to Firebase.');
+  } catch (error) {
+    console.error("Error saving positions: ", error);
+    alert('Error: Could not save positions.');
   }
 }
 
-function saveHotspotPositions() {
-  const navContainer = document.getElementById('nav-vr-container');
-  const hotspots = navContainer.children;
+// --- INITIALIZATION & UI CREATION ---
 
-  for (let i = 0; i < hotspots.length; i++) {
-    const hotspot = hotspots[i];
-    const hotspotId = hotspot.getAttribute('hotspot-id');
-    const newPosition = hotspot.getAttribute('position');
-    scenes[currentScene].hotspots[hotspotId].position = `${newPosition.x.toFixed(2)} ${newPosition.y.toFixed(2)} ${newPosition.z.toFixed(2)}`;
-  }
+function createSaveButtonEntity() {
+    const sceneEl = document.querySelector('a-scene');
+    const cameraEl = sceneEl.camera.el;
 
-  const updatedScenes = JSON.stringify(scenes, null, 2);
-  const fileContent = `const scenes = ${updatedScenes};\n\n` + window.atob("JCpkZWZhdWx0X2FwaS53cml0ZV9maWxlKHBhdGg9ImFmcmFtZS12ci5qcyIsIGNvbnRlbnQ9ZmlsZUNvbnRlbnQp");
+    const saveButton = document.createElement('a-entity');
+    saveButton.setAttribute('geometry', 'primitive: plane; width: 0.6; height: 0.2');
+    saveButton.setAttribute('material', 'color: #FFC107; shader: flat');
+    saveButton.setAttribute('position', '0 -0.5 -1.5'); // Position in front of the camera
+    
+    const buttonText = document.createElement('a-text');
+    buttonText.setAttribute('value', 'Save Positions');
+    buttonText.setAttribute('color', 'black');
+    buttonText.setAttribute('align', 'center');
+    buttonText.setAttribute('scale', '0.3 0.3 0.3');
+    saveButton.appendChild(buttonText);
 
-  // This part is tricky, as we can't directly call the tool from here.
-  // We will need to output the code to be executed.
-  console.log('----EXECUTE THE FOLLOWING CODE----');
-  console.log(fileContent);
-  alert('Open the developer console (F12) and copy the code to save the new positions.');
+    // Add hover effect
+    saveButton.setAttribute('event-set__enter', '_event: mouseenter; scale: 1.1 1.1 1.1');
+    saveButton.setAttribute('event-set__leave', '_event: mouseleave; scale: 1 1 1');
+
+    // Add click listener
+    saveButton.addEventListener('click', saveHotspotPositions);
+
+    // Append the button as a child of the camera so it's always visible
+    cameraEl.appendChild(saveButton);
 }
 
+window.onload = async () => {
+  if (typeof firebase === 'undefined' || typeof db === 'undefined') {
+      console.error("Firebase is not initialized.");
+      alert("Firebase connection failed.");
+      return;
+  }
 
-window.onload = () => {
-  updateScene();
+  await updateScene();
 
   if (isEditMode) {
-    const saveButton = document.createElement('button');
-    saveButton.textContent = 'Save Positions';
-    saveButton.style.position = 'fixed';
-    saveButton.style.bottom = '20px';
-    saveButton.style.left = '50%';
-    saveButton.style.transform = 'translateX(-50%)';
-    saveButton.style.zIndex = '9999';
-    saveButton.style.padding = '10px 20px';
-    saveButton.style.backgroundColor = '#FFC107';
-    saveButton.style.color = 'black';
-    saveButton.style.border = 'none';
-    saveButton.style.borderRadius = '5px';
-    saveButton.style.cursor = 'pointer';
-
-    saveButton.addEventListener('click', saveHotspotPositions);
-    document.body.appendChild(saveButton);
+    createSaveButtonEntity(); // Create the in-scene save button
+    console.log("Edit mode enabled. Click and hold to drag hotspots.");
   }
 };
