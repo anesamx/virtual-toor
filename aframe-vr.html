@@ -2,22 +2,50 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>A-Frame VR Experience</title>
-    <meta name="description" content="Immersive VR experience for headsets.">
+    <title>A-Frame Tour Editor</title>
+    <meta name="description" content="Immersive tour editor.">
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <!-- We will add styles for the new button here -->
+    <style>
+      #vr-button {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        z-index: 10;
+        padding: 10px 20px;
+        background-color: #007BFF;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-family: sans-serif;
+        font-weight: bold;
+      }
+      #vr-button:hover {
+        background-color: #0056b3;
+      }
+    </style>
   </head>
   <body>
-    <a-scene>
-      <a-sky id="sky" src="./public/1.jpg" rotation="0 -130 0"></a-sky>
+    <!-- The raycaster is now on the scene, driven by the mouse -->
+    <a-scene raycaster="objects: [data-raycastable]; cursor: true">
+      <a-assets>
+        <!-- Preload images if needed -->
+      </a-assets>
+
+      <a-sky id="sky" src="./public/1.jpg" rotation="0 -130 0" data-raycastable></a-sky>
+      
       <a-entity id="nav-vr-container"></a-entity>
 
-      <a-camera>
-        <!-- The raycaster now only targets objects with the 'data-raycastable' attribute -->
-        <a-cursor raycaster="objects: [data-raycastable]"></a-cursor>
-      </a-camera>
+      <!-- The camera no longer has a cursor child -->
+      <a-camera></a-camera>
+
     </a-scene>
 
-    <!-- Use type="module" for modern Firebase SDK -->
+    <!-- The new UI buttons will be outside the A-Frame scene -->
+    <button id="vr-button">Enter VR</button>
+
+    <!-- All JS logic will be cleanly handled in modules -->
     <script type="module" src="./firebase-init.js"></script>
     <script type="module" src="./aframe-vr.js"></script>
   </body>
