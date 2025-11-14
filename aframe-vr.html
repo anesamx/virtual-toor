@@ -35,13 +35,12 @@
         display: none; 
         flex-direction: column;
       }
-      #editor-sidebar h3, #editor-sidebar h4 {
+      #editor-sidebar h3, #editor-sidebar h4, #editor-sidebar h5 {
         margin-top: 0;
         border-bottom: 1px solid #555;
         padding-bottom: 10px;
       }
       #scene-list-container {
-        flex-grow: 1;
         overflow-y: auto;
       }
       #editor-sidebar .scene-list-item {
@@ -51,7 +50,7 @@
       #editor-sidebar .scene-list-item input {
         margin-right: 10px;
       }
-       #editor-sidebar button {
+       #editor-sidebar #save-hotspot-button {
         width: 100%;
         padding: 12px;
         font-size: 16px;
@@ -62,7 +61,7 @@
         cursor: pointer;
         margin-top: 20px;
       }
-       #editor-sidebar button:hover { background-color: #218838; }
+       #editor-sidebar #save-hotspot-button:hover { background-color: #218838; }
 
       #hotspot-details-container .detail-item,
       .scene-selector-container {
@@ -84,6 +83,107 @@
         border-radius: 3px;
         padding: 5px;
         box-sizing: border-box;
+      }
+
+      /* --- Sidebar Action Buttons --- */
+      .actions-container {
+          padding-bottom: 15px; 
+          border-bottom: 1px solid #555; 
+          margin-bottom: 15px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+      }
+      #editor-sidebar .sidebar-action-button {
+          width: 100%;
+          padding: 10px;
+          font-size: 14px;
+          background-color: #007BFF;
+          color: white;
+          border: none;
+          border-radius: 5px;
+          cursor: pointer;
+          text-align: center;
+      }
+      #editor-sidebar .sidebar-action-button:hover {
+          background-color: #0056b3;
+      }
+
+      /* --- Modal Styles --- */
+      .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-color: rgba(0, 0, 0, 0.7);
+          z-index: 100;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+      }
+
+      .modal-content {
+          background-color: #1e1e1e;
+          padding: 30px;
+          border-radius: 10px;
+          width: 90%;
+          max-width: 400px;
+          box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+      }
+
+      .modal-content h3 {
+          margin-top: 0;
+          border-bottom: 1px solid #555;
+          padding-bottom: 15px;
+          margin-bottom: 20px;
+      }
+
+      .modal-content form label {
+          display: block;
+          margin-bottom: 8px;
+          font-weight: bold;
+      }
+
+      .modal-content form input, .modal-content form select {
+          width: 100%;
+          padding: 10px;
+          margin-bottom: 20px;
+          box-sizing: border-box;
+          background-color: #333;
+          color: white;
+          border: 1px solid #555;
+          border-radius: 5px;
+      }
+
+      .modal-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 10px;
+          margin-top: 10px;
+      }
+
+      .modal-actions button {
+          padding: 10px 20px;
+          border-radius: 5px;
+          border: none;
+          cursor: pointer;
+      }
+
+      .modal-actions button[type="submit"] {
+          background-color: #28a745;
+          color: white;
+      }
+      .modal-actions button[type="submit"]:hover {
+          background-color: #218838;
+      }
+
+      .modal-actions button[type="button"] {
+          background-color: #6c757d;
+          color: white;
+      }
+      .modal-actions button[type="button"]:hover {
+          background-color: #5a6268;
       }
 
     </style>
@@ -110,9 +210,14 @@
         <label for="scene-selector">Go to Scene</label>
         <select id="scene-selector"></select>
       </div>
+
+      <div class="actions-container">
+        <button id="add-scene-button" class="sidebar-action-button">Add New Scene</button>
+        <button id="add-hotspot-button" class="sidebar-action-button">Add New Hotspot</button>
+      </div>
       
       <h4>Edit Hotspots</h4>
-      <div id="scene-list-container" style="max-height: 40%; overflow-y: auto;">
+      <div id="scene-list-container" style="flex-grow: 1; max-height: 35%; overflow-y: auto;">
         <p>Loading hotspots...</p>
       </div>
 
@@ -134,10 +239,43 @@
 
       <div style="flex-grow: 1;"></div> <!-- Spacer -->
 
-      <button id="save-hotspot-button">Save Selected</button>
+      <button id="save-hotspot-button">Save Position/Size</button>
     </div>
 
     <button id="vr-button">Enter VR</button>
+
+    <!-- MODALS -->
+    <div id="add-scene-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-content">
+        <h3>Add New Scene</h3>
+        <form id="add-scene-form">
+          <label for="scene-name">Scene Name</label>
+          <input type="text" id="scene-name" name="scene-name" required>
+          <label for="scene-image">Image URL</label>
+          <input type="url" id="scene-image" name="scene-image" required placeholder="e.g., ./public/image.jpg">
+          <div class="modal-actions">
+            <button type="submit" id="save-scene-button">Save Scene</button>
+            <button type="button" id="cancel-scene-button" class="cancel-button">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="add-hotspot-modal" class="modal-overlay" style="display: none;">
+      <div class="modal-content">
+        <h3>Add New Hotspot</h3>
+        <form id="add-hotspot-form">
+          <label for="hotspot-text">Hotspot Text</label>
+          <input type="text" id="hotspot-text-input" name="hotspot-text" required>
+          <label for="hotspot-target-selector">Target Scene</label>
+          <select id="hotspot-target-selector" name="hotspot-target" required></select>
+          <div class="modal-actions">
+            <button type="submit" id="save-new-hotspot-button">Save Hotspot</button>
+            <button type="button" id="cancel-hotspot-button" class="cancel-button">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <script type="module" src="./firebase-init.js"></script>
     <script type="module" src="./aframe-vr.js"></script>
