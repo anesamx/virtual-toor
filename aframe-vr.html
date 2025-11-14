@@ -5,6 +5,8 @@
     <title>A-Frame VR Experience</title>
     <meta name="description" content="Immersive VR experience for headsets.">
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore.js"></script>
   </head>
   <body>
     <a-scene>
@@ -15,6 +17,7 @@
         <a-cursor></a-cursor>
       </a-camera>
     </a-scene>
+    <script src="./firebase-init.js"></script>
     <script src="./aframe-vr.js"></script>
   </body>
 </html>

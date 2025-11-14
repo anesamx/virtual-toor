@@ -16,33 +16,6 @@ body {
   line-height: 1.6;
 }
 
-#panorama {
-    width: 100vw;
-    height: 100vh;
-}
-
-#exit-vr-btn {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    z-index: 1000; /* Ensure it's on top */
-    background-color: var(--secondary-color);
-    color: var(--on-primary);
-    border: none;
-    padding: 1rem 2rem;
-    border-radius: 50px;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-#exit-vr-btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
-}
-
-
 .hero {
   display: flex;
   flex-direction: column;
@@ -72,6 +45,8 @@ body {
 
 .button-container {
   display: flex;
+  flex-direction: column; /* Align buttons vertically */
+  align-items: center; /* Center buttons horizontally */
   gap: 1.5rem;
 }
 
@@ -83,22 +58,11 @@ body {
   font-weight: 600;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   border: 2px solid var(--secondary-color);
+  width: 150px; /* Set a fixed width for the buttons */
 }
 
 .button:hover {
   transform: translateY(-5px);
-}
-
-.button.phone-tour {
-  background-color: transparent;
-  color: var(--secondary-color);
-  box-shadow: 0 0 15px rgba(0, 169, 255, 0.4);
-}
-
-.button.phone-tour:hover {
-  box-shadow: 0 0 25px rgba(0, 169, 255, 0.8), 0 0 35px rgba(0, 169, 255, 0.6);
-  background-color: var(--secondary-color);
-  color: var(--on-primary);
 }
 
 .button.vr-tour {
@@ -110,6 +74,19 @@ body {
 .button.vr-tour:hover {
   box-shadow: 0 0 30px rgba(0, 169, 255, 0.8), 0 0 40px rgba(0, 169, 255, 0.6);
 }
+
+.button.edit-button {
+  background-color: transparent;
+  color: var(--secondary-color);
+  box-shadow: 0 0 15px rgba(0, 169, 255, 0.4);
+}
+
+.button.edit-button:hover {
+  box-shadow: 0 0 25px rgba(0, 169, 255, 0.8), 0 0 35px rgba(0, 169, 255, 0.6);
+  background-color: var(--secondary-color);
+  color: var(--on-primary);
+}
+
 
 .features {
   display: grid;
