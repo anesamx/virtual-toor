@@ -5,14 +5,16 @@ import { collection, query, where, limit, getDocs, doc, updateDoc } from "https:
 let currentSceneId = "1";
 let selectedHotspotEntity = null;
 let stagedPosition = null; 
+let stagedSize = null;
 const PLACEMENT_RADIUS = 10; 
+const DEFAULT_HOTSPOT_SIZE = 0.2;
 
 // --- URL PARAMETERS ---
 const urlParams = new URLSearchParams(window.location.search);
 const isEditMode = urlParams.get('edit') === 'true';
 
 // --- DOM ELEMENTS (for editor) ---
-let yawInput, pitchInput, detailsContainer;
+let yawInput, pitchInput, radiusInput, detailsContainer;
 
 // --- COORDINATE CONVERSION UTILITIES ---
 
@@ -79,7 +81,10 @@ function createHotspotElement(docId, hotspotData) {
     hotspot.setAttribute('hotspot-db-id', docId);
     hotspot.classList.add('clickable');
 
-    hotspot.setAttribute('geometry', 'primitive: sphere; radius: 0.2');
+    const hotspotSize = hotspotData.size || DEFAULT_HOTSPOT_SIZE;
+    hotspot.setAttribute('geometry', `primitive: sphere; radius: ${hotspotSize}`);
+    hotspot.dataset.size = hotspotSize; // Store for later access
+
     hotspot.setAttribute('material', 'color: #E0E0E0; transparent: true; opacity: 0.6');
 
     let position;
@@ -88,14 +93,8 @@ function createHotspotElement(docId, hotspotData) {
         const { yaw = 0, pitch = 0, radius = PLACEMENT_RADIUS } = hotspotData.coordination;
         position = sphericalToCartesian(yaw, pitch, radius);
         angles = { yaw, pitch, radius };
-    } else if (typeof hotspotData.coordination === 'string') { // Handle old format
-        position = hotspotData.coordination;
-        try {
-            const posVec = new THREE.Vector3(...position.split(' ').map(Number));
-            angles = cartesianToSpherical(posVec);
-        } catch(e) { angles = { yaw: 0, pitch: 0, radius: PLACEMENT_RADIUS }; }
-    } else { // Handle null or invalid data
-        position = sphericalToCartesian(0,0,PLACEMENT_RADIUS);
+    } else {
+        position = sphericalToCartesian(0, 0, PLACEMENT_RADIUS);
         angles = { yaw: 0, pitch: 0, radius: PLACEMENT_RADIUS };
     }
     hotspot.setAttribute('position', position);
@@ -122,7 +121,7 @@ function createHotspotElement(docId, hotspotData) {
     return hotspot;
 }
 
-// --- EDITOR LOGIC (FINAL IMPLEMENTATION) ---
+// --- EDITOR LOGIC ---
 
 function initializeEditor() {
     const cursorEl = document.querySelector('a-cursor');
@@ -130,23 +129,17 @@ function initializeEditor() {
 
     yawInput = document.getElementById('hotspot-yaw');
     pitchInput = document.getElementById('hotspot-pitch');
+    radiusInput = document.getElementById('hotspot-radius');
     detailsContainer = document.getElementById('hotspot-details-container');
     document.getElementById('editor-sidebar').style.display = 'flex';
 
     cursorEl.addEventListener('click', function (evt) {
-        if (!selectedHotspotEntity) {
-            return; // Ignore clicks if no hotspot is selected
-        }
-
-        // Check if the clicked entity is the placement target (the sky)
+        if (!selectedHotspotEntity) return;
         if (evt.detail.intersectedEl && evt.detail.intersectedEl.classList.contains('placement-target')) {
             const point = evt.detail.intersection.point;
             const angles = cartesianToSpherical(point);
-            
-            // --- PITCH ADJUSTMENT ---
-            angles.pitch += 9; // Add +9 degree offset for accuracy
-
-            updateHotspotPosition(angles); // This updates the hotspot position and the input fields
+            angles.pitch += 9; // Pitch adjustment
+            updateHotspotPosition(angles);
         }
     });
 
@@ -155,10 +148,16 @@ function initializeEditor() {
             const angles = {
                 yaw: parseFloat(yawInput.value) || 0,
                 pitch: parseFloat(pitchInput.value) || 0,
-                radius: PLACEMENT_RADIUS
             };
-            updateHotspotPosition(angles, false); // Don't re-update inputs
+            updateHotspotPosition(angles, false);
         });
+    });
+
+    radiusInput.addEventListener('input', () => {
+        if (!selectedHotspotEntity) return;
+        const newSize = parseFloat(radiusInput.value) || DEFAULT_HOTSPOT_SIZE;
+        selectedHotspotEntity.setAttribute('geometry', 'radius', newSize);
+        stagedSize = newSize;
     });
 
     saveButton.addEventListener('click', async () => {
@@ -174,19 +173,29 @@ function initializeEditor() {
         const hotspotRef = doc(db, "hotspots", docId);
 
         try {
-            await updateDoc(hotspotRef, { coordination: stagedPosition });
-            alert('Success! Position saved.');
+            const dataToUpdate = { coordination: stagedPosition };
+            if (stagedSize !== null) {
+                dataToUpdate.size = stagedSize;
+            }
+
+            await updateDoc(hotspotRef, dataToUpdate);
+            alert('Success! Position and size saved.');
 
             selectedHotspotEntity.dataset.angles = JSON.stringify(stagedPosition);
+            if (stagedSize !== null) {
+                selectedHotspotEntity.dataset.size = stagedSize;
+            }
+            
             selectedHotspotEntity.setAttribute('material', 'color', '#E0E0E0');
             const radio = document.querySelector(`input[name="hotspot"]:checked`);
             if(radio) radio.checked = false;
             selectedHotspotEntity = null;
             stagedPosition = null;
+            stagedSize = null;
             detailsContainer.style.display = 'none';
         } catch (error) {
-            console.error("Error saving position: ", error);
-            alert('Error: Could not save position.');
+            console.error("Error saving data: ", error);
+            alert('Error: Could not save data.');
         } finally {
             saveButton.textContent = "Save Selected";
             saveButton.disabled = false;
@@ -197,9 +206,10 @@ function initializeEditor() {
 function updateHotspotPosition(angles, updateInputs = true) {
     if (!selectedHotspotEntity) return;
 
-    const newPosition = sphericalToCartesian(angles.yaw, angles.pitch, PLACEMENT_RADIUS);
+    const currentRadius = JSON.parse(selectedHotspotEntity.dataset.angles || '{}').radius || PLACEMENT_RADIUS;
+    const newPosition = sphericalToCartesian(angles.yaw, angles.pitch, currentRadius);
     selectedHotspotEntity.setAttribute('position', newPosition);
-    stagedPosition = {yaw: angles.yaw, pitch: angles.pitch, radius: PLACEMENT_RADIUS};
+    stagedPosition = { yaw: angles.yaw, pitch: angles.pitch, radius: currentRadius };
 
     if (updateInputs) {
         yawInput.value = angles.yaw.toFixed(1);
@@ -243,13 +253,15 @@ function populateSidebar(hotspotEntities) {
                 pitch: currentAngles.pitch || 0,
                 radius: currentAngles.radius || PLACEMENT_RADIUS
             };
-
             stagedPosition = angles;
+
+            const currentSize = entity.dataset.size || DEFAULT_HOTSPOT_SIZE;
+            stagedSize = parseFloat(currentSize);
+
             yawInput.value = angles.yaw.toFixed(1);
             pitchInput.value = angles.pitch.toFixed(1);
+            radiusInput.value = currentSize;
             detailsContainer.style.display = 'block';
-
-            console.log(`Selected hotspot: ${docId}, position staged.`);
         });
 
         item.appendChild(radio);
