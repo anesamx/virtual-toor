@@ -625,6 +625,36 @@ async function main() {
     vrButton.addEventListener('click', () => {
         document.querySelector('a-scene').enterVR();
     });
+
+    const sceneEl = document.querySelector('a-scene');
+    const exitVrButton = document.getElementById('exit-vr-button');
+    const exitVrModal = document.getElementById('exit-vr-modal');
+    const exitVrConfirm = document.getElementById('exit-vr-confirm');
+    const exitVrCancel = document.getElementById('exit-vr-cancel');
+
+    sceneEl.addEventListener('enter-vr', () => {
+        if (!isEditMode) {
+            exitVrButton.setAttribute('visible', 'true');
+        }
+    });
+
+    sceneEl.addEventListener('exit-vr', () => {
+        exitVrButton.setAttribute('visible', 'false');
+        exitVrModal.style.display = 'none';
+    });
+
+    exitVrButton.addEventListener('click', () => {
+        exitVrModal.style.display = 'flex';
+    });
+
+    exitVrConfirm.addEventListener('click', () => {
+        sceneEl.exitVR();
+    });
+
+    exitVrCancel.addEventListener('click', () => {
+        exitVrModal.style.display = 'none';
+    });
+
 }
 
 main();
