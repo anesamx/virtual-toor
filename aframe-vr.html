@@ -5,8 +5,8 @@
     <title>A-Frame Tour Editor</title>
     <meta name="description" content="Immersive tour editor.">
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    <!-- We will add styles for the new button here -->
     <style>
+      body { font-family: sans-serif; }
       #vr-button {
         position: absolute;
         top: 20px;
@@ -18,34 +18,116 @@
         border: none;
         border-radius: 5px;
         cursor: pointer;
-        font-family: sans-serif;
+      }
+      #vr-button:hover { background-color: #0056b3; }
+
+      #editor-sidebar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 280px;
+        height: 100%;
+        background-color: rgba(20, 20, 20, 0.9);
+        color: white;
+        padding: 20px;
+        box-sizing: border-box;
+        z-index: 20;
+        display: none; 
+        flex-direction: column;
+      }
+      #editor-sidebar h3, #editor-sidebar h4 {
+        margin-top: 0;
+        border-bottom: 1px solid #555;
+        padding-bottom: 10px;
+      }
+      #scene-list-container {
+        flex-grow: 1;
+        overflow-y: auto;
+      }
+      #editor-sidebar .scene-list-item {
+        margin: 15px 0;
+        display: block;
+      }
+      #editor-sidebar .scene-list-item input {
+        margin-right: 10px;
+      }
+       #editor-sidebar button {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-top: 20px;
+      }
+       #editor-sidebar button:hover { background-color: #218838; }
+
+      #hotspot-details-container .detail-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+      #hotspot-details-container label {
         font-weight: bold;
       }
-      #vr-button:hover {
-        background-color: #0056b3;
+      #hotspot-details-container input {
+        width: 120px;
+        background-color: #333;
+        color: white;
+        border: 1px solid #555;
+        border-radius: 3px;
+        padding: 5px;
+        box-sizing: border-box;
       }
+
     </style>
   </head>
   <body>
-    <!-- The raycaster is now on the scene, driven by the mouse -->
-    <a-scene raycaster="objects: [data-raycastable]; cursor: true">
+    <a-scene>
       <a-assets>
-        <!-- Preload images if needed -->
       </a-assets>
 
-      <a-sky id="sky" src="./public/1.jpg" rotation="0 -130 0" data-raycastable></a-sky>
+      <a-sky id="sky" src="./public/1.jpg" rotation="0 -130 0"></a-sky>
+
+      <!-- Restoring the invisible placement sphere -->
+      <a-sphere id="placement-sphere" radius="10" material="transparent: true; opacity: 0" data-raycastable></a-sphere>
       
       <a-entity id="nav-vr-container"></a-entity>
 
-      <!-- The camera no longer has a cursor child -->
-      <a-camera></a-camera>
+      <a-camera>
+        <a-cursor raycaster="objects: .clickable, [data-raycastable]"></a-cursor>
+      </a-camera>
 
     </a-scene>
 
-    <!-- The new UI buttons will be outside the A-Frame scene -->
+    <div id="editor-sidebar">
+      <h3>Edit Hotspots</h3>
+      <div id="scene-list-container" style="max-height: 40%; overflow-y: auto;">
+        <p>Loading hotspots...</p>
+      </div>
+
+      <div id="hotspot-details-container" style="display: none; margin-top: 20px; border-top: 1px solid #555; padding-top: 15px;">
+          <h4>Selected Hotspot</h4>
+          <div class="detail-item">
+              <label for="hotspot-yaw">Yaw</label>
+              <input type="number" id="hotspot-yaw" step="0.1">
+          </div>
+          <div class="detail-item">
+              <label for="hotspot-pitch">Pitch</label>
+              <input type="number" id="hotspot-pitch" step="0.1">
+          </div>
+      </div>
+
+      <div style="flex-grow: 1;"></div> <!-- Spacer -->
+
+      <button id="save-hotspot-button">Save Selected</button>
+    </div>
+
     <button id="vr-button">Enter VR</button>
 
-    <!-- All JS logic will be cleanly handled in modules -->
     <script type="module" src="./firebase-init.js"></script>
     <script type="module" src="./aframe-vr.js"></script>
   </body>

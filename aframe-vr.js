@@ -1,188 +1,281 @@
 import { db } from './firebase-init.js';
-import { collection, query, where, limit, getDocs, doc, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+import { collection, query, where, limit, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
 // --- GLOBALS ---
 let currentSceneId = "1";
-let selectedHotspot = null; // This will hold the currently selected hotspot entity
+let selectedHotspotEntity = null;
+let stagedPosition = null; 
+const PLACEMENT_RADIUS = 10; 
 
 // --- URL PARAMETERS ---
 const urlParams = new URLSearchParams(window.location.search);
 const isEditMode = urlParams.get('edit') === 'true';
 
-// --- EDITOR LOGIC (FINAL "SELECT-AND-PLACE" SYSTEM) ---
-if (isEditMode) {
+// --- DOM ELEMENTS (for editor) ---
+let yawInput, pitchInput, detailsContainer;
 
-  // A-Frame component to specifically block keyboard events when a hotspot is selected.
-  AFRAME.registerComponent('keyboard-blocker', {
-    init: function () {
-      this.onKeyDown = function(e) { e.stopPropagation(); };
-      // Listen with high priority to capture the event before other components do.
-      this.el.sceneEl.addEventListener('keydown', this.onKeyDown, true); 
-    },
-    remove: function () {
-      this.el.sceneEl.removeEventListener('keydown', this.onKeyDown, true);
-    }
-  });
+// --- COORDINATE CONVERSION UTILITIES ---
 
-  // Scene-wide click handler for the editor
-  document.querySelector('a-scene').addEventListener('click', function (evt) {
-    const clickedEl = evt.detail.intersectedEl;
-
-    // --- STATE 1: A hotspot is ALREADY selected ---
-    if (selectedHotspot) {
-      // This is the SECOND click (the "place" action).
-      const newPos = evt.detail.intersection.point;
-
-      // If we clicked the same hotspot again, it's a "cancel" action.
-      if (clickedEl === selectedHotspot) {
-          console.log("Move cancelled.");
-      } else if (newPos) {
-          selectedHotspot.setAttribute('position', `${newPos.x} ${newPos.y} ${newPos.z}`);
-          console.log("Hotspot placed at new position.");
-      }
-
-      // Deselect the hotspot, reset its color, and REMOVE the keyboard blocker.
-      selectedHotspot.setAttribute('material', 'color', 'grey');
-      selectedHotspot.removeAttribute('keyboard-blocker');
-      selectedHotspot = null;
-    } 
-    // --- STATE 2: NOTHING is selected ---
-    else {
-      // This is the FIRST click (the "select" action).
-      if (clickedEl && clickedEl.hasAttribute('hotspot-db-id')) {
-        selectedHotspot = clickedEl;
-        selectedHotspot.setAttribute('material', 'color', '#FFC107'); // Highlight yellow
-        // ADD the keyboard blocker to prevent movement with arrow keys.
-        selectedHotspot.setAttribute('keyboard-blocker',''); 
-        console.log("Hotspot selected. Click elsewhere to place it.");
-      }
-    }
-  });
+function sphericalToCartesian(yaw, pitch, radius) {
+    const yawRad = yaw * (Math.PI / 180);
+    const pitchRad = pitch * (Math.PI / 180);
+    const x = radius * Math.cos(pitchRad) * Math.sin(yawRad);
+    const y = radius * Math.sin(pitchRad);
+    const z = -radius * Math.cos(pitchRad) * Math.cos(yawRad);
+    return `${x.toFixed(2)} ${y.toFixed(2)} ${z.toFixed(2)}`;
 }
 
-// --- SCENE MANAGEMENT ---
+function cartesianToSpherical(position) {
+    const radius = Math.sqrt(position.x ** 2 + position.y ** 2 + position.z ** 2);
+    const pitchRatio = Math.max(-1, Math.min(1, position.y / radius));
+    const yaw = Math.atan2(position.x, -position.z) * (180 / Math.PI);
+    const pitch = Math.asin(pitchRatio) * (180 / Math.PI);
+    return { yaw, pitch, radius };
+}
+
+// --- CORE APPLICATION LOGIC ---
 
 async function updateScene() {
-  const sky = document.getElementById('sky');
-  const navContainer = document.getElementById('nav-vr-container');
-  navContainer.innerHTML = '';
+    const sky = document.getElementById('sky');
+    const navContainer = document.getElementById('nav-vr-container');
+    navContainer.innerHTML = '';
 
-  const scenesRef = collection(db, "scenes");
-  const qScene = query(scenesRef, where("sceneId", "==", currentSceneId), limit(1));
-  const sceneQuerySnapshot = await getDocs(qScene);
+    const scenesRef = collection(db, "scenes");
+    const qScene = query(scenesRef, where("sceneId", "==", currentSceneId), limit(1));
+    const sceneQuerySnapshot = await getDocs(qScene);
 
-  if (sceneQuerySnapshot.empty) {
-    console.error(`Scene with sceneId "${currentSceneId}" not found!`);
-    return;
-  }
-  const sceneDoc = sceneQuerySnapshot.docs[0];
-  sky.setAttribute('src', sceneDoc.data().image);
+    if (sceneQuerySnapshot.empty) {
+        console.error(`Error: Scene with ID "${currentSceneId}" not found.`);
+        return;
+    }
+    const sceneDoc = sceneQuerySnapshot.docs[0];
+    sky.setAttribute('src', sceneDoc.data().image);
 
-  const hotspotsRef = collection(db, "hotspots");
-  const qHotspots = query(hotspotsRef, where('sourceSceneId', '==', currentSceneId));
-  const hotspotsQuerySnapshot = await getDocs(qHotspots);
-  
-  hotspotsQuerySnapshot.forEach(hotspotDoc => {
-    const hotspot = createHotspot(hotspotDoc.id, hotspotDoc.data());
-    navContainer.appendChild(hotspot);
-  });
-}
+    const hotspotsRef = collection(db, "hotspots");
+    const qHotspots = query(hotspotsRef, where('sourceSceneId', '==', currentSceneId));
+    const hotspotsQuerySnapshot = await getDocs(qHotspots);
 
-function createHotspot(docId, hotspotData) {
-  const hotspot = document.createElement('a-entity');
-  hotspot.setAttribute('hotspot-db-id', docId);
-  hotspot.setAttribute('geometry', 'primitive: sphere; radius: 0.2');
-  hotspot.setAttribute('material', 'color: grey; transparent: true; opacity: 0.5');
-  hotspot.setAttribute('data-raycastable', '');
-
-  const pos = hotspotData.coordination;
-  hotspot.setAttribute('position', typeof pos === 'object' ? `${pos.x} ${pos.y} ${pos.z}` : pos);
-
-  hotspot.setAttribute('event-set__enter', '_event: mouseenter; scale: 1.2 1.2 1.2');
-  hotspot.setAttribute('event-set__leave', '_event: mouseleave; scale: 1 1 1');
-
-  if (!isEditMode) {
-    hotspot.addEventListener('click', () => {
-      currentSceneId = hotspotData.targetSceneId;
-      updateScene();
+    const hotspotEntities = [];
+    hotspotsQuerySnapshot.forEach(hotspotDoc => {
+        const hotspotEl = createHotspotElement(hotspotDoc.id, hotspotDoc.data());
+        hotspotEntities.push(hotspotEl);
+        navContainer.appendChild(hotspotEl);
     });
-  }
 
-  const text = document.createElement('a-text');
-  text.setAttribute('value', hotspotData.text);
-  text.setAttribute('look-at', '[camera]');
-  text.setAttribute('scale', '0.5 0.5 0.5');
-  text.setAttribute('position', '0 0.4 0');
-  hotspot.appendChild(text);
-
-  return hotspot;
+    if (isEditMode) {
+        populateSidebar(hotspotEntities);
+    }
+    
+    setTimeout(() => {
+        const cursorEl = document.querySelector('a-cursor');
+        if (cursorEl) {
+            cursorEl.components.raycaster.refreshObjects();
+        }
+    }, 100);
 }
 
-// --- DATA SAVING ---
+function createHotspotElement(docId, hotspotData) {
+    const hotspot = document.createElement('a-entity');
+    hotspot.setAttribute('hotspot-db-id', docId);
+    hotspot.classList.add('clickable');
 
-async function saveHotspotPositions() {
-    if (selectedHotspot) {
-        selectedHotspot.setAttribute('material', 'color', 'grey');
-        selectedHotspot.removeAttribute('keyboard-blocker');
-        selectedHotspot = null;
+    hotspot.setAttribute('geometry', 'primitive: sphere; radius: 0.2');
+    hotspot.setAttribute('material', 'color: #E0E0E0; transparent: true; opacity: 0.6');
+
+    let position;
+    let angles;
+    if (typeof hotspotData.coordination === 'object' && hotspotData.coordination !== null) {
+        const { yaw = 0, pitch = 0, radius = PLACEMENT_RADIUS } = hotspotData.coordination;
+        position = sphericalToCartesian(yaw, pitch, radius);
+        angles = { yaw, pitch, radius };
+    } else if (typeof hotspotData.coordination === 'string') { // Handle old format
+        position = hotspotData.coordination;
+        try {
+            const posVec = new THREE.Vector3(...position.split(' ').map(Number));
+            angles = cartesianToSpherical(posVec);
+        } catch(e) { angles = { yaw: 0, pitch: 0, radius: PLACEMENT_RADIUS }; }
+    } else { // Handle null or invalid data
+        position = sphericalToCartesian(0,0,PLACEMENT_RADIUS);
+        angles = { yaw: 0, pitch: 0, radius: PLACEMENT_RADIUS };
+    }
+    hotspot.setAttribute('position', position);
+    hotspot.dataset.angles = JSON.stringify(angles);
+
+    hotspot.setAttribute('event-set__enter', '_event: mouseenter; scale: 1.2 1.2 1.2');
+    hotspot.setAttribute('event-set__leave', '_event: mouseleave; scale: 1 1 1');
+
+    if (!isEditMode) {
+        hotspot.addEventListener('click', (e) => {
+            e.stopPropagation();
+            currentSceneId = hotspotData.targetSceneId;
+            updateScene();
+        });
     }
 
-  const navContainer = document.getElementById('nav-vr-container');
-  const hotspotEntities = navContainer.children;
-  const batch = writeBatch(db);
+    const text = document.createElement('a-text');
+    text.setAttribute('value', hotspotData.text);
+    text.setAttribute('look-at', '[camera]');
+    text.setAttribute('scale', '0.5 0.5 0.5');
+    text.setAttribute('position', '0 0.4 0');
+    hotspot.appendChild(text);
 
-  for (let i = 0; i < hotspotEntities.length; i++) {
-    const hotspotEl = hotspotEntities[i];
-    const docId = hotspotEl.getAttribute('hotspot-db-id');
-    const newPosition = hotspotEl.getAttribute('position');
-    const newCoordString = `${newPosition.x.toFixed(2)} ${newPosition.y.toFixed(2)} ${newPosition.z.toFixed(2)}`;
-
-    const hotspotRef = doc(db, "hotspots", docId);
-    batch.update(hotspotRef, { coordination: newCoordString });
-  }
-
-  try {
-    await batch.commit();
-    alert('Success! New positions saved to Firebase.');
-  } catch (error) {
-    console.error("Error saving positions: ", error);
-    alert('Error: Could not save positions.');
-  }
+    return hotspot;
 }
 
-// --- INITIALIZATION & UI CREATION ---
+// --- EDITOR LOGIC (WITH FINAL, CORRECTED PLACEMENT) ---
 
-function createSaveButtonEntity() {
+function initializeEditor() {
     const sceneEl = document.querySelector('a-scene');
-    const cameraEl = sceneEl.camera.el;
-
-    const saveButton = document.createElement('a-entity');
-    saveButton.setAttribute('geometry', 'primitive: plane; width: 0.6; height: 0.2');
-    saveButton.setAttribute('material', 'color: #FFC107; shader: flat');
-    saveButton.setAttribute('position', '0 -0.5 -1.5');
-    saveButton.setAttribute('data-raycastable', '');
+    const saveButton = document.getElementById('save-hotspot-button');
     
-    const buttonText = document.createElement('a-text');
-    buttonText.setAttribute('value', 'Save Positions');
-    buttonText.setAttribute('color', 'black');
-    buttonText.setAttribute('align', 'center');
-    buttonText.setAttribute('scale', '0.3 0.3 0.3');
-    saveButton.appendChild(buttonText);
+    yawInput = document.getElementById('hotspot-yaw');
+    pitchInput = document.getElementById('hotspot-pitch');
+    detailsContainer = document.getElementById('hotspot-details-container');
+    document.getElementById('editor-sidebar').style.display = 'flex';
 
-    saveButton.setAttribute('event-set__enter', '_event: mouseenter; scale: 1.1 1.1 1.1');
-    saveButton.setAttribute('event-set__leave', '_event: mouseleave; scale: 1 1 1');
-    saveButton.addEventListener('click', (e) => {
-        e.stopPropagation(); 
-        saveHotspotPositions();
+    // --- FINAL FIX: Calculate direction from the camera to the intersection point ---
+    sceneEl.addEventListener('click', function (evt) {
+        if (!selectedHotspotEntity || !evt.detail.intersection) return;
+        const clickedEl = evt.detail.intersectedEl;
+
+        if (clickedEl && clickedEl.id === 'placement-sphere') {
+            const intersectionPoint = evt.detail.intersection.point;
+            const cameraEl = evt.detail.cursorEl.sceneEl.camera.el;
+            const cameraPosition = new THREE.Vector3();
+            cameraEl.object3D.getWorldPosition(cameraPosition); // Get camera's world position
+
+            // 1. Calculate the direction from the camera to the click point
+            const direction = new THREE.Vector3().subVectors(intersectionPoint, cameraPosition).normalize();
+
+            // 2. Create the new hotspot position along that direction vector
+            const newPosition = direction.multiplyScalar(PLACEMENT_RADIUS);
+            
+            // 3. Convert to spherical coordinates for saving and UI
+            const angles = cartesianToSpherical(newPosition);
+            updateHotspotPosition(angles);
+        }
     });
-    cameraEl.appendChild(saveButton);
+
+    [yawInput, pitchInput].forEach(input => {
+        input.addEventListener('input', () => {
+            const angles = {
+                yaw: parseFloat(yawInput.value) || 0,
+                pitch: parseFloat(pitchInput.value) || 0,
+                radius: PLACEMENT_RADIUS
+            };
+            updateHotspotPosition(angles, false);
+        });
+    });
+
+    saveButton.addEventListener('click', async () => {
+        if (!selectedHotspotEntity || !stagedPosition) {
+            alert("Please select a hotspot and ensure its position is set.");
+            return;
+        }
+
+        saveButton.textContent = "Saving...";
+        saveButton.disabled = true;
+
+        const docId = selectedHotspotEntity.getAttribute('hotspot-db-id');
+        const hotspotRef = doc(db, "hotspots", docId);
+
+        try {
+            await updateDoc(hotspotRef, { coordination: stagedPosition });
+            alert('Success! Position saved.');
+            
+            selectedHotspotEntity.dataset.angles = JSON.stringify(stagedPosition);
+            selectedHotspotEntity.setAttribute('material', 'color', '#E0E0E0');
+            const radio = document.querySelector(`input[name="hotspot"]:checked`);
+            if(radio) radio.checked = false;
+            selectedHotspotEntity = null;
+            stagedPosition = null;
+            detailsContainer.style.display = 'none';
+        } catch (error) {
+            console.error("Error saving position: ", error);
+            alert('Error: Could not save position.');
+        } finally {
+            saveButton.textContent = "Save Selected";
+            saveButton.disabled = false;
+        }
+    });
 }
 
-window.onload = async () => {
-  await updateScene();
+function updateHotspotPosition(angles, updateInputs = true) {
+    if (!selectedHotspotEntity) return;
 
-  if (isEditMode) {
-    createSaveButtonEntity();
-    console.log("Edit mode enabled. Click a hotspot to select, click elsewhere to place.");
-  }
-};
+    const newPosition = sphericalToCartesian(angles.yaw, angles.pitch, angles.radius);
+    selectedHotspotEntity.setAttribute('position', newPosition);
+    stagedPosition = angles;
+
+    if (updateInputs) {
+        yawInput.value = angles.yaw.toFixed(1);
+        pitchInput.value = angles.pitch.toFixed(1);
+    }
+    console.log(`Staged new position (angles):`, stagedPosition);
+}
+
+function populateSidebar(hotspotEntities) {
+    const container = document.getElementById('scene-list-container');
+    container.innerHTML = '';
+
+    if (hotspotEntities.length === 0) {
+        container.innerHTML = '<p>No hotspots in this scene.</p>';
+        return;
+    }
+
+    hotspotEntities.forEach(entity => {
+        const docId = entity.getAttribute('hotspot-db-id');
+        const hotspotText = entity.querySelector('a-text').getAttribute('value');
+
+        const item = document.createElement('label');
+        item.className = 'scene-list-item';
+
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'hotspot';
+        radio.value = docId;
+
+        radio.addEventListener('change', () => {
+            if (selectedHotspotEntity) {
+                selectedHotspotEntity.setAttribute('material', 'color', '#E0E0E0');
+            }
+            detailsContainer.style.display = 'none';
+
+            selectedHotspotEntity = entity;
+            selectedHotspotEntity.setAttribute('material', 'color', 'red');
+
+            const currentAngles = JSON.parse(entity.dataset.angles || '{}');
+            const angles = {
+                yaw: currentAngles.yaw || 0,
+                pitch: currentAngles.pitch || 0,
+                radius: currentAngles.radius || PLACEMENT_RADIUS
+            };
+            
+            stagedPosition = angles;
+            yawInput.value = angles.yaw.toFixed(1);
+            pitchInput.value = angles.pitch.toFixed(1);
+            detailsContainer.style.display = 'block';
+            
+            console.log(`Selected hotspot: ${docId}, position staged.`);
+        });
+
+        item.appendChild(radio);
+        item.appendChild(document.createTextNode(hotspotText));
+        container.appendChild(item);
+    });
+}
+
+// --- INITIALIZATION ---
+
+async function main() {
+    await updateScene();
+    if (isEditMode) {
+        initializeEditor();
+    }
+    const vrButton = document.getElementById('vr-button');
+    vrButton.addEventListener('click', () => {
+        document.querySelector('a-scene').enterVR();
+    });
+}
+
+main();
