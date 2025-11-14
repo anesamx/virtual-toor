@@ -16,6 +16,33 @@ body {
   line-height: 1.6;
 }
 
+#panorama {
+    width: 100vw;
+    height: 100vh;
+}
+
+#exit-vr-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1000; /* Ensure it's on top */
+    background-color: var(--secondary-color);
+    color: var(--on-primary);
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 50px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+#exit-vr-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+
 .hero {
   display: flex;
   flex-direction: column;
