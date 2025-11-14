@@ -1,6 +1,18 @@
 import { db } from './firebase-init.js';
 import { collection, query, where, limit, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
+// --- Register a custom billboard component for better text orientation ---
+AFRAME.registerComponent('billboard', {
+  init: function () {
+    this.camera = this.el.sceneEl.camera.el;
+  },
+  tick: function () {
+    // On each frame, copy the camera's rotation to the text element.
+    // This ensures it always faces the user without flipping upside down.
+    this.el.object3D.quaternion.copy(this.camera.object3D.quaternion);
+  }
+});
+
 // --- GLOBALS ---
 let currentSceneId = "1";
 let selectedHotspotEntity = null;
@@ -113,7 +125,8 @@ function createHotspotElement(docId, hotspotData) {
 
     const text = document.createElement('a-text');
     text.setAttribute('value', hotspotData.text);
-    text.setAttribute('look-at', '[camera]');
+    // Use the new billboard component instead of look-at
+    text.setAttribute('billboard', ''); 
     text.setAttribute('scale', '0.5 0.5 0.5');
     text.setAttribute('position', '0 0.4 0');
     hotspot.appendChild(text);
