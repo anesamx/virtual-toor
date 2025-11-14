@@ -1,5 +1,6 @@
 import { db } from './firebase-init.js';
 import { collection, query, where, getDocs, doc, updateDoc, addDoc, orderBy } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+import { R2_PUBLIC_URL } from './r2-config.js';
 
 // --- Register a custom billboard component for better text orientation ---
 AFRAME.registerComponent('billboard', {
@@ -243,37 +244,63 @@ async function populateSceneSelectors() {
 }
 
 async function handleAddScene(e) {
-    e.preventDefault();
-    const saveBtn = document.getElementById('save-scene-button');
-    saveBtn.disabled = true;
-    saveBtn.textContent = "Saving...";
+  e.preventDefault();
+  const saveBtn = document.getElementById('save-scene-button');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Uploading...';
 
-    try {
-        const scenesRef = collection(db, "scenes");
-        const q = query(scenesRef, orderBy("sceneId", "desc"), where("sceneId", "!=", null));
-        const lastSceneSnapshot = await getDocs(q);
-        const newSceneId = lastSceneSnapshot.empty ? "1" : (parseInt(lastSceneSnapshot.docs[0].data().sceneId) + 1).toString();
+  const sceneName = e.target['scene-name'].value;
+  const imageFile = e.target['scene-image-file'].files[0];
 
-        await addDoc(scenesRef, {
-            sceneId: newSceneId,
-            name: e.target['scene-name'].value,
-            image: e.target['scene-image'].value
-        });
+  if (!imageFile) {
+    alert('Please select an image file.');
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save Scene';
+    return;
+  }
 
-        await populateSceneSelectors();
-        currentSceneId = newSceneId;
-        await updateScene();
+  const uploadUrl = `${R2_PUBLIC_URL}/${imageFile.name}`;
 
-        addSceneForm.reset();
-        addSceneModal.style.display = 'none';
-    } catch (error) {
-        console.error("Error adding scene: ", error);
-        alert("Could not add the scene.");
-    } finally {
-        saveBtn.disabled = false;
-        saveBtn.textContent = "Save Scene";
-    }
+  try {
+    // Upload to R2
+    await fetch(uploadUrl, {
+      method: 'PUT',
+      body: imageFile,
+      headers: {
+        'Content-Type': imageFile.type,
+      },
+    });
+
+    // Save to Firestore
+    saveBtn.textContent = 'Saving...';
+    const scenesRef = collection(db, 'scenes');
+    const q = query(scenesRef, orderBy('sceneId', 'desc'), where('sceneId', '!=', null));
+    const lastSceneSnapshot = await getDocs(q);
+    const newSceneId = lastSceneSnapshot.empty
+      ? '1'
+      : (parseInt(lastSceneSnapshot.docs[0].data().sceneId) + 1).toString();
+
+    await addDoc(scenesRef, {
+      sceneId: newSceneId,
+      name: sceneName,
+      image: uploadUrl,
+    });
+
+    await populateSceneSelectors();
+    currentSceneId = newSceneId;
+    await updateScene();
+
+    addSceneForm.reset();
+    addSceneModal.style.display = 'none';
+  } catch (error) {
+    console.error('Error adding scene:', error);
+    alert('Could not add the scene. Check the console for details.');
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save Scene';
+  }
 }
+
 
 async function handleAddHotspot(e) {
     e.preventDefault();
