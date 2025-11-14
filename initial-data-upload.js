@@ -2,23 +2,20 @@
 THIS IS A ONE-TIME-USE SCRIPT.
 
 Instructions:
-1. Open the `aframe-vr.html` page in your browser.
-2. Open the developer console (usually by pressing F12).
-3. Copy the entire content of this file.
+1. Make sure you are on the aframe-vr.html page in your browser.
+2. Open the developer console (usually F12).
+3. Copy the ENTIRE content of this file.
 4. Paste it into the console and press Enter.
 5. Wait for the success message. Your database will then be populated.
 
 You can delete this file after you have successfully uploaded the data.
 */
 
-async function uploadInitialData() {
-  if (typeof firebase === 'undefined' || typeof db === 'undefined') {
-      console.error("Firebase is not initialized. Please ensure you have the correct firebase-init.js file and credentials.");
-      alert("Firebase connection failed. Cannot upload data.");
-      return;
-  }
+import { db } from './firebase-init.js';
+import { collection, writeBatch, doc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
-  console.log("Starting data upload...");
+async function uploadInitialData() {
+  console.log("Starting data upload with modern Firebase SDK...");
 
   const scenes = [
     { sceneId: "1", name: "Living Room", image: "./public/1.jpg" },
@@ -33,20 +30,23 @@ async function uploadInitialData() {
     { sourceSceneId: "3", targetSceneId: "1", text: "Go to Living Room", coordination: "-2 1.5 4" }
   ];
 
-  const batch = db.batch();
+  // Use the v9 batch function
+  const batch = writeBatch(db);
 
   // Add scenes
   console.log("Preparing scenes...");
+  const scenesRef = collection(db, 'scenes');
   scenes.forEach(scene => {
-    const sceneRef = db.collection('scenes').doc(); // Auto-generate ID
-    batch.set(sceneRef, scene);
+    const sceneDocRef = doc(scenesRef); // Auto-generate ID
+    batch.set(sceneDocRef, scene);
   });
 
   // Add hotspots
   console.log("Preparing hotspots...");
+  const hotspotsRef = collection(db, 'hotspots');
   hotspots.forEach(hotspot => {
-    const hotspotRef = db.collection('hotspots').doc(); // Auto-generate ID
-    batch.set(hotspotRef, hotspot);
+    const hotspotDocRef = doc(hotspotsRef); // Auto-generate ID
+    batch.set(hotspotDocRef, hotspot);
   });
 
   try {
@@ -62,3 +62,6 @@ async function uploadInitialData() {
 
 // To run this, copy the function call below and paste it into your browser console:
 // uploadInitialData();
+
+// We will call this function directly for convenience since this is a module now
+uploadInitialData();

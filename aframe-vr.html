@@ -5,8 +5,6 @@
     <title>A-Frame VR Experience</title>
     <meta name="description" content="Immersive VR experience for headsets.">
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.7/firebase-firestore.js"></script>
   </head>
   <body>
     <a-scene>
@@ -14,10 +12,13 @@
       <a-entity id="nav-vr-container"></a-entity>
 
       <a-camera>
-        <a-cursor></a-cursor>
+        <!-- The raycaster now only targets objects with the 'data-raycastable' attribute -->
+        <a-cursor raycaster="objects: [data-raycastable]"></a-cursor>
       </a-camera>
     </a-scene>
-    <script src="./firebase-init.js"></script>
-    <script src="./aframe-vr.js"></script>
+
+    <!-- Use type="module" for modern Firebase SDK -->
+    <script type="module" src="./firebase-init.js"></script>
+    <script type="module" src="./aframe-vr.js"></script>
   </body>
 </html>
