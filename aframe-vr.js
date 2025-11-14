@@ -1,6 +1,6 @@
 import { db } from './firebase-init.js';
-import { collection, query, where, getDocs, doc, updateDoc, addDoc, orderBy } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
-import { R2_PUBLIC_URL } from './r2-config.js';
+import { collection, query, where, getDocs, doc, updateDoc, addDoc, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+import { R2_PUBLIC_URL, WORKER_URL } from './r2-config.js';
 
 // --- Register a custom billboard component for better text orientation ---
 AFRAME.registerComponent('billboard', {
@@ -224,6 +224,7 @@ async function initializeEditor() {
     });
 
     document.getElementById('save-hotspot-button').addEventListener('click', handleSaveHotspot);
+    document.getElementById('delete-hotspot-button').addEventListener('click', handleDeleteHotspot);
 }
 
 async function populateSceneSelectors() {
@@ -244,61 +245,82 @@ async function populateSceneSelectors() {
 }
 
 async function handleAddScene(e) {
-  e.preventDefault();
-  const saveBtn = document.getElementById('save-scene-button');
-  saveBtn.disabled = true;
-  saveBtn.textContent = 'Uploading...';
+    e.preventDefault();
+    const saveBtn = document.getElementById('save-scene-button');
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Saving...";
 
-  const sceneName = e.target['scene-name'].value;
-  const imageFile = e.target['scene-image-file'].files[0];
+    const sceneName = e.target['scene-name'].value;
+    const imageFile = e.target['scene-image-file'].files[0];
 
-  if (!imageFile) {
-    alert('Please select an image file.');
-    saveBtn.disabled = false;
-    saveBtn.textContent = 'Save Scene';
-    return;
-  }
+    if (!sceneName || !imageFile) {
+        alert('Please provide a scene name and select an image.');
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Scene';
+        return;
+    }
 
-  const uploadUrl = `${R2_PUBLIC_URL}/${imageFile.name}`;
+    try {
+        // --- Step 1: Upload the file directly to the Worker ---
+        saveBtn.textContent = 'Uploading Image...';
+        const formData = new FormData();
+        formData.append('file', imageFile); // 'file' must match what the worker expects
 
-  try {
-    // Upload to R2
-    await fetch(uploadUrl, {
-      method: 'PUT',
-      body: imageFile,
-      headers: {
-        'Content-Type': imageFile.type,
-      },
-    });
+        const uploadResponse = await fetch(WORKER_URL, {
+            method: 'POST',
+            body: formData, // The browser will set the correct Content-Type header
+        });
 
-    // Save to Firestore
-    saveBtn.textContent = 'Saving...';
-    const scenesRef = collection(db, 'scenes');
-    const q = query(scenesRef, orderBy('sceneId', 'desc'), where('sceneId', '!=', null));
-    const lastSceneSnapshot = await getDocs(q);
-    const newSceneId = lastSceneSnapshot.empty
-      ? '1'
-      : (parseInt(lastSceneSnapshot.docs[0].data().sceneId) + 1).toString();
+        if (!uploadResponse.ok) {
+            // Try to parse the JSON error from the worker, but have a fallback.
+            let errorMsg = `Upload failed with status: ${uploadResponse.status}`;
+            try {
+                const result = await uploadResponse.json();
+                errorMsg = result.error || 'Unknown worker error';
+            } catch (jsonError) {
+                // If the response isn't JSON, use the raw text.
+                errorMsg = await uploadResponse.text();
+            }
+            throw new Error(errorMsg);
+        }
 
-    await addDoc(scenesRef, {
-      sceneId: newSceneId,
-      name: sceneName,
-      image: uploadUrl,
-    });
+        const result = await uploadResponse.json();
+        if (!result.success) {
+            throw new Error(`Upload failed: ${result.error || 'Unknown worker error'}`);
+        }
+        
+        // --- Step 2: Construct the public URL and save to Firestore ---
+        saveBtn.textContent = 'Saving Scene...';
+        const finalImageUrl = `${R2_PUBLIC_URL}/${result.publicUrl}`; // Use the key returned by the worker
+        
+        const scenesRef = collection(db, 'scenes');
+        const q = query(scenesRef, orderBy('sceneId', 'desc'), where('sceneId', '!=', null));
+        const lastSceneSnapshot = await getDocs(q);
+        const newSceneId = lastSceneSnapshot.empty
+            ? '1'
+            : (parseInt(lastSceneSnapshot.docs[0].data().sceneId) + 1).toString();
 
-    await populateSceneSelectors();
-    currentSceneId = newSceneId;
-    await updateScene();
+        await addDoc(scenesRef, {
+            sceneId: newSceneId,
+            name: sceneName,
+            image: finalImageUrl, // We save the public URL for viewing
+        });
 
-    addSceneForm.reset();
-    addSceneModal.style.display = 'none';
-  } catch (error) {
-    console.error('Error adding scene:', error);
-    alert('Could not add the scene. Check the console for details.');
-  } finally {
-    saveBtn.disabled = false;
-    saveBtn.textContent = 'Save Scene';
-  }
+        // --- Step 3: Refresh the application state ---
+        await populateSceneSelectors();
+        currentSceneId = newSceneId;
+        await updateScene();
+
+        addSceneForm.reset();
+        addSceneModal.style.display = 'none';
+
+    } catch (error) {
+        console.error('Error adding scene:', error);
+        alert(`Could not add the scene. Check the console for details: ${error.message}`);
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Scene';
+    }
 }
 
 
@@ -367,10 +389,44 @@ async function handleSaveHotspot() {
     }
 }
 
+async function handleDeleteHotspot() {
+    if (!selectedHotspotEntity) {
+        alert("Please select a hotspot from the list to delete.");
+        return;
+    }
+
+    const hotspotText = selectedHotspotEntity.querySelector('a-text').getAttribute('value');
+    if (!confirm(`Are you sure you want to delete the hotspot: "${hotspotText}"?`)) {
+        return;
+    }
+
+    const docId = selectedHotspotEntity.getAttribute('hotspot-db-id');
+    const deleteBtn = document.getElementById('delete-hotspot-button');
+    deleteBtn.disabled = true;
+    deleteBtn.textContent = "Deleting...";
+
+    try {
+        const hotspotRef = doc(db, "hotspots", docId);
+        await deleteDoc(hotspotRef);
+        
+        // The updateScene() function will automatically clear the UI.
+        await updateScene();
+        
+        alert("Hotspot deleted successfully.");
+
+    } catch (error) {
+        console.error("Error deleting hotspot:", error);
+        alert("Failed to delete the hotspot. Check the console for details.");
+    } finally {
+        deleteBtn.disabled = false;
+        deleteBtn.textContent = "Delete Hotspot";
+    }
+}
+
 function updateHotspotPosition(angles, updateInputs = true) {
     if (!selectedHotspotEntity) return;
 
-    const currentRadius = JSON.parse(selectedHotspotEntity.dataset.angles || '{}').radius || PLACEMENT_RADIUS;
+    const currentRadius = JSON.parse(selectedHotspotEntity.dataset.angles || '{ }').radius || PLACEMENT_RADIUS;
     const newPosition = sphericalToCartesian(angles.yaw, angles.pitch, currentRadius);
     selectedHotspotEntity.setAttribute('position', newPosition);
     stagedPosition = { yaw: angles.yaw, pitch: angles.pitch, radius: currentRadius };
@@ -411,7 +467,7 @@ function populateSidebar(hotspotEntities) {
             selectedHotspotEntity = entity;
             selectedHotspotEntity.setAttribute('material', 'color', 'red');
 
-            const currentAngles = JSON.parse(entity.dataset.angles || '{}');
+            const currentAngles = JSON.parse(entity.dataset.angles || '{ }');
             const angles = {
                 yaw: currentAngles.yaw || 0,
                 pitch: currentAngles.pitch || 0,

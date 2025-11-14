@@ -50,18 +50,29 @@
       #editor-sidebar .scene-list-item input {
         margin-right: 10px;
       }
-       #editor-sidebar #save-hotspot-button {
+
+       .selected-hotspot-actions {
+           display: flex;
+           flex-direction: column;
+           gap: 10px; 
+           margin-top: auto; 
+       }
+
+       #editor-sidebar .selected-hotspot-actions button {
         width: 100%;
         padding: 12px;
         font-size: 16px;
-        background-color: #28a745;
         color: white;
         border: none;
         border-radius: 5px;
         cursor: pointer;
-        margin-top: 20px;
       }
-       #editor-sidebar #save-hotspot-button:hover { background-color: #218838; }
+
+       #save-hotspot-button { background-color: #28a745; }
+       #save-hotspot-button:hover { background-color: #218838; }
+       
+       #delete-hotspot-button { background-color: #dc3545; }
+       #delete-hotspot-button:hover { background-color: #c82333; }
 
       #hotspot-details-container .detail-item,
       .scene-selector-container {
@@ -238,9 +249,10 @@
           </div>
       </div>
 
-      <div style="flex-grow: 1;"></div> <!-- Spacer -->
-
-      <button id="save-hotspot-button">Save Position/Size</button>
+      <div class="selected-hotspot-actions">
+        <button id="save-hotspot-button">Save Position/Size</button>
+        <button id="delete-hotspot-button">Delete Hotspot</button>
+      </div>
     </div>
 
     <button id="vr-button">Enter VR</button>
