@@ -122,37 +122,31 @@ function createHotspotElement(docId, hotspotData) {
     return hotspot;
 }
 
-// --- EDITOR LOGIC (WITH FINAL, CORRECTED PLACEMENT) ---
+// --- EDITOR LOGIC (FINAL IMPLEMENTATION) ---
 
 function initializeEditor() {
-    const sceneEl = document.querySelector('a-scene');
+    const cursorEl = document.querySelector('a-cursor');
     const saveButton = document.getElementById('save-hotspot-button');
-    
+
     yawInput = document.getElementById('hotspot-yaw');
     pitchInput = document.getElementById('hotspot-pitch');
     detailsContainer = document.getElementById('hotspot-details-container');
     document.getElementById('editor-sidebar').style.display = 'flex';
 
-    // --- FINAL FIX: Calculate direction from the camera to the intersection point ---
-    sceneEl.addEventListener('click', function (evt) {
-        if (!selectedHotspotEntity || !evt.detail.intersection) return;
-        const clickedEl = evt.detail.intersectedEl;
+    cursorEl.addEventListener('click', function (evt) {
+        if (!selectedHotspotEntity) {
+            return; // Ignore clicks if no hotspot is selected
+        }
 
-        if (clickedEl && clickedEl.id === 'placement-sphere') {
-            const intersectionPoint = evt.detail.intersection.point;
-            const cameraEl = evt.detail.cursorEl.sceneEl.camera.el;
-            const cameraPosition = new THREE.Vector3();
-            cameraEl.object3D.getWorldPosition(cameraPosition); // Get camera's world position
-
-            // 1. Calculate the direction from the camera to the click point
-            const direction = new THREE.Vector3().subVectors(intersectionPoint, cameraPosition).normalize();
-
-            // 2. Create the new hotspot position along that direction vector
-            const newPosition = direction.multiplyScalar(PLACEMENT_RADIUS);
+        // Check if the clicked entity is the placement target (the sky)
+        if (evt.detail.intersectedEl && evt.detail.intersectedEl.classList.contains('placement-target')) {
+            const point = evt.detail.intersection.point;
+            const angles = cartesianToSpherical(point);
             
-            // 3. Convert to spherical coordinates for saving and UI
-            const angles = cartesianToSpherical(newPosition);
-            updateHotspotPosition(angles);
+            // --- PITCH ADJUSTMENT ---
+            angles.pitch += 9; // Add +9 degree offset for accuracy
+
+            updateHotspotPosition(angles); // This updates the hotspot position and the input fields
         }
     });
 
@@ -163,7 +157,7 @@ function initializeEditor() {
                 pitch: parseFloat(pitchInput.value) || 0,
                 radius: PLACEMENT_RADIUS
             };
-            updateHotspotPosition(angles, false);
+            updateHotspotPosition(angles, false); // Don't re-update inputs
         });
     });
 
@@ -182,7 +176,7 @@ function initializeEditor() {
         try {
             await updateDoc(hotspotRef, { coordination: stagedPosition });
             alert('Success! Position saved.');
-            
+
             selectedHotspotEntity.dataset.angles = JSON.stringify(stagedPosition);
             selectedHotspotEntity.setAttribute('material', 'color', '#E0E0E0');
             const radio = document.querySelector(`input[name="hotspot"]:checked`);
@@ -203,15 +197,14 @@ function initializeEditor() {
 function updateHotspotPosition(angles, updateInputs = true) {
     if (!selectedHotspotEntity) return;
 
-    const newPosition = sphericalToCartesian(angles.yaw, angles.pitch, angles.radius);
+    const newPosition = sphericalToCartesian(angles.yaw, angles.pitch, PLACEMENT_RADIUS);
     selectedHotspotEntity.setAttribute('position', newPosition);
-    stagedPosition = angles;
+    stagedPosition = {yaw: angles.yaw, pitch: angles.pitch, radius: PLACEMENT_RADIUS};
 
     if (updateInputs) {
         yawInput.value = angles.yaw.toFixed(1);
         pitchInput.value = angles.pitch.toFixed(1);
     }
-    console.log(`Staged new position (angles):`, stagedPosition);
 }
 
 function populateSidebar(hotspotEntities) {
@@ -250,12 +243,12 @@ function populateSidebar(hotspotEntities) {
                 pitch: currentAngles.pitch || 0,
                 radius: currentAngles.radius || PLACEMENT_RADIUS
             };
-            
+
             stagedPosition = angles;
             yawInput.value = angles.yaw.toFixed(1);
             pitchInput.value = angles.pitch.toFixed(1);
             detailsContainer.style.display = 'block';
-            
+
             console.log(`Selected hotspot: ${docId}, position staged.`);
         });
 

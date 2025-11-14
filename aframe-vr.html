@@ -90,15 +90,12 @@
       <a-assets>
       </a-assets>
 
-      <a-sky id="sky" src="./public/1.jpg" rotation="0 -130 0"></a-sky>
-
-      <!-- Restoring the invisible placement sphere -->
-      <a-sphere id="placement-sphere" radius="10" material="transparent: true; opacity: 0" data-raycastable></a-sphere>
+      <a-sky id="sky" src="./public/1.jpg" rotation="0 -130 0" class="placement-target"></a-sky>
       
       <a-entity id="nav-vr-container"></a-entity>
 
       <a-camera>
-        <a-cursor raycaster="objects: .clickable, [data-raycastable]"></a-cursor>
+        <a-cursor raycaster="objects: .clickable, .placement-target"></a-cursor>
       </a-camera>
 
     </a-scene>
@@ -118,6 +115,10 @@
           <div class="detail-item">
               <label for="hotspot-pitch">Pitch</label>
               <input type="number" id="hotspot-pitch" step="0.1">
+          </div>
+          <div class="detail-item">
+              <label for="hotspot-radius">Radius</label>
+              <input type="number" id="hotspot-radius" step="0.05">
           </div>
       </div>
 
