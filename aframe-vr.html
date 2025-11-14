@@ -130,6 +130,7 @@
           width: 90%;
           max-width: 400px;
           box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+          color: white;
       }
 
       .modal-content h3 {
@@ -251,8 +252,8 @@
         <form id="add-scene-form">
           <label for="scene-name">Scene Name</label>
           <input type="text" id="scene-name" name="scene-name" required>
-          <label for="scene-image">Image URL</label>
-          <input type="url" id="scene-image" name="scene-image" required placeholder="e.g., ./public/image.jpg">
+          <label for="scene-image-file">Scene Image</label>
+          <input type="file" id="scene-image-file" name="scene-image-file" required accept="image/jpeg, image/png">
           <div class="modal-actions">
             <button type="submit" id="save-scene-button">Save Scene</button>
             <button type="button" id="cancel-scene-button" class="cancel-button">Cancel</button>

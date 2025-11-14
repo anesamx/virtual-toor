@@ -419,7 +419,7 @@ async function main() {
     }
     await updateScene();
     
-    const vrButton = document.getElementById('vr-button');
+     const vrButton = document.getElementById('vr-button');
     vrButton.addEventListener('click', () => {
         document.querySelector('a-scene').enterVR();
     });
