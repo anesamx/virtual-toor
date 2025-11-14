@@ -1,5 +1,5 @@
 import { db } from './firebase-init.js';
-import { collection, query, where, getDocs, doc, updateDoc, addDoc, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
+import { collection, query, where, getDocs, doc, updateDoc, addDoc, orderBy, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 import { R2_PUBLIC_URL, WORKER_URL } from './r2-config.js';
 
 // --- Register a custom billboard component for better text orientation ---
@@ -13,7 +13,8 @@ AFRAME.registerComponent('billboard', {
 });
 
 // --- GLOBALS ---
-let currentSceneId = "1";
+let currentScenarioId = null;
+let currentSceneId = null;
 let selectedHotspotEntity = null;
 let stagedPosition = null; 
 let stagedSize = null;
@@ -26,7 +27,8 @@ const isEditMode = urlParams.get('edit') === 'true';
 
 // --- DOM ELEMENTS ---
 let yawInput, pitchInput, radiusInput, detailsContainer, sceneSelector;
-let addSceneModal, addHotspotModal, addSceneForm, addHotspotForm, hotspotTargetSelector;
+let addSceneModal, addHotspotModal, addScenarioModal, addSceneForm, addHotspotForm, addScenarioForm, hotspotTargetSelector;
+let scenarioSelectionModal;
 
 // --- COORDINATE CONVERSION UTILITIES ---
 
@@ -62,18 +64,25 @@ async function updateScene() {
       if(detailsContainer) detailsContainer.style.display = 'none';
     }
 
+    if (!currentSceneId) {
+        sky.setAttribute('src', './public/1.jpg');
+        if (isEditMode) populateSidebar([]);
+        return; 
+    }
+
     const scenesRef = collection(db, "scenes");
-    const qScene = query(scenesRef, where("sceneId", "==", currentSceneId));
+    const qScene = query(scenesRef, where("scenarioId", "==", currentScenarioId), where("sceneId", "==", currentSceneId));
     const sceneQuerySnapshot = await getDocs(qScene);
 
     if (sceneQuerySnapshot.empty) {
-        console.error(`Error: Scene with ID "${currentSceneId}" not found.`);
-        // Attempt to load the first scene if current is invalid
-        const firstSceneQuery = query(scenesRef, orderBy("sceneId"), where("sceneId", "!=", null));
+        console.error(`Error: Scene with ID "${currentSceneId}" not found in scenario "${currentScenarioId}".`);
+        const firstSceneQuery = query(scenesRef, where("scenarioId", "==", currentScenarioId), orderBy("sceneId"));
         const firstSceneSnapshot = await getDocs(firstSceneQuery);
         if(!firstSceneSnapshot.empty) {
-            currentSceneId = firstSceneSnapshot.docs[0].id;
-            updateScene(); // Re-run with a valid ID
+            currentSceneId = firstSceneSnapshot.docs[0].data().sceneId;
+            updateScene();
+        } else {
+          sky.setAttribute('src', './public/1.jpg');
         }
         return;
     }
@@ -82,7 +91,7 @@ async function updateScene() {
     if (isEditMode && sceneSelector) sceneSelector.value = currentSceneId;
 
     const hotspotsRef = collection(db, "hotspots");
-    const qHotspots = query(hotspotsRef, where('sourceSceneId', '==', currentSceneId));
+    const qHotspots = query(hotspotsRef, where('scenarioId', '==', currentScenarioId), where('sourceSceneId', '==', currentSceneId));
     const hotspotsQuerySnapshot = await getDocs(qHotspots);
 
     const hotspotEntities = [];
@@ -171,11 +180,6 @@ async function initializeEditor() {
     addHotspotForm = document.getElementById('add-hotspot-form');
     hotspotTargetSelector = document.getElementById('hotspot-target-selector');
 
-    document.getElementById('editor-sidebar').style.display = 'flex';
-
-    // --- Populate Scene Selectors ---
-    await populateSceneSelectors();
-
     // --- Event Listeners ---
     sceneSelector.addEventListener('change', () => {
         currentSceneId = sceneSelector.value;
@@ -188,6 +192,7 @@ async function initializeEditor() {
         btn.addEventListener('click', () => {
             addSceneModal.style.display = 'none';
             addHotspotModal.style.display = 'none';
+            addScenarioModal.style.display = 'none';
         });
     });
 
@@ -225,13 +230,17 @@ async function initializeEditor() {
 
     document.getElementById('save-hotspot-button').addEventListener('click', handleSaveHotspot);
     document.getElementById('delete-hotspot-button').addEventListener('click', handleDeleteHotspot);
+    document.getElementById('exit-editor-button').addEventListener('click', () => {
+        sessionStorage.removeItem('currentScenarioId');
+        window.location.href = window.location.pathname;
+    });
 }
 
 async function populateSceneSelectors() {
     sceneSelector.innerHTML = '';
     hotspotTargetSelector.innerHTML = '';
     const scenesRef = collection(db, "scenes");
-    const q = query(scenesRef, orderBy("sceneId"));
+    const q = query(scenesRef, where("scenarioId", "==", currentScenarioId), orderBy("sceneId"));
     const querySnapshot = await getDocs(q);
     querySnapshot.forEach((doc) => {
         const scene = doc.data();
@@ -241,7 +250,9 @@ async function populateSceneSelectors() {
         sceneSelector.appendChild(option.cloneNode(true));
         hotspotTargetSelector.appendChild(option);
     });
-    sceneSelector.value = currentSceneId;
+    if (currentSceneId) {
+      sceneSelector.value = currentSceneId;
+    }
 }
 
 async function handleAddScene(e) {
@@ -264,21 +275,19 @@ async function handleAddScene(e) {
         // --- Step 1: Upload the file directly to the Worker ---
         saveBtn.textContent = 'Uploading Image...';
         const formData = new FormData();
-        formData.append('file', imageFile); // 'file' must match what the worker expects
+        formData.append('file', imageFile);
 
         const uploadResponse = await fetch(WORKER_URL, {
             method: 'POST',
-            body: formData, // The browser will set the correct Content-Type header
+            body: formData,
         });
 
         if (!uploadResponse.ok) {
-            // Try to parse the JSON error from the worker, but have a fallback.
             let errorMsg = `Upload failed with status: ${uploadResponse.status}`;
             try {
                 const result = await uploadResponse.json();
                 errorMsg = result.error || 'Unknown worker error';
             } catch (jsonError) {
-                // If the response isn't JSON, use the raw text.
                 errorMsg = await uploadResponse.text();
             }
             throw new Error(errorMsg);
@@ -291,24 +300,25 @@ async function handleAddScene(e) {
         
         // --- Step 2: Construct the public URL and save to Firestore ---
         saveBtn.textContent = 'Saving Scene...';
-        const finalImageUrl = `${R2_PUBLIC_URL}/${result.publicUrl}`; // Use the key returned by the worker
+        const finalImageUrl = `${R2_PUBLIC_URL}/${result.publicUrl}`;
         
         const scenesRef = collection(db, 'scenes');
-        const q = query(scenesRef, orderBy('sceneId', 'desc'), where('sceneId', '!=', null));
+        const q = query(scenesRef, where("scenarioId", "==", currentScenarioId), orderBy('sceneId', 'desc'));
         const lastSceneSnapshot = await getDocs(q);
         const newSceneId = lastSceneSnapshot.empty
             ? '1'
             : (parseInt(lastSceneSnapshot.docs[0].data().sceneId) + 1).toString();
 
         await addDoc(scenesRef, {
+            scenarioId: currentScenarioId,
             sceneId: newSceneId,
             name: sceneName,
-            image: finalImageUrl, // We save the public URL for viewing
+            image: finalImageUrl,
         });
 
         // --- Step 3: Refresh the application state ---
-        await populateSceneSelectors();
         currentSceneId = newSceneId;
+        await populateSceneSelectors();
         await updateScene();
 
         addSceneForm.reset();
@@ -332,6 +342,7 @@ async function handleAddHotspot(e) {
 
     try {
         await addDoc(collection(db, "hotspots"), {
+            scenarioId: currentScenarioId,
             sourceSceneId: currentSceneId,
             targetSceneId: e.target['hotspot-target'].value,
             text: e.target['hotspot-text-input'].value,
@@ -409,7 +420,6 @@ async function handleDeleteHotspot() {
         const hotspotRef = doc(db, "hotspots", docId);
         await deleteDoc(hotspotRef);
         
-        // The updateScene() function will automatically clear the UI.
         await updateScene();
         
         alert("Hotspot deleted successfully.");
@@ -490,19 +500,128 @@ function populateSidebar(hotspotEntities) {
     });
 }
 
+// --- SCENARIO LOGIC ---
+
+async function initializeScenarioSelector() {
+    const selector = document.getElementById('scenario-selector-dropdown');
+    selector.innerHTML = '';
+    const scenariosRef = collection(db, "scenarios");
+    const q = query(scenariosRef, orderBy("createdAt", "desc"));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+        const option = document.createElement('option');
+        option.textContent = "No scenarios found. Create one!";
+        option.disabled = true;
+        selector.appendChild(option);
+    } else {
+        querySnapshot.forEach((doc) => {
+            const scenario = doc.data();
+            const option = document.createElement('option');
+            option.value = doc.id;
+            option.textContent = scenario.name;
+            selector.appendChild(option);
+        });
+    }
+}
+
+async function handleAddScenario(e) {
+    e.preventDefault();
+    const button = document.getElementById('save-scenario-button');
+    button.disabled = true;
+    button.textContent = "Creating...";
+
+    try {
+        const scenariosRef = collection(db, "scenarios");
+        const newScenarioName = document.getElementById('scenario-name').value;
+        if (!newScenarioName) {
+            alert("Please enter a name for the scenario.");
+            return;
+        }
+
+        const newScenarioDoc = await addDoc(scenariosRef, { 
+            name: newScenarioName,
+            createdAt: serverTimestamp()
+        });
+        
+        await initializeScenarioSelector(); // Refresh the dropdown
+        
+        currentScenarioId = newScenarioDoc.id; // Set the new ID
+        sessionStorage.setItem('currentScenarioId', currentScenarioId);
+        addScenarioModal.style.display = 'none';
+        addScenarioForm.reset();
+        loadScenario(); // Load the newly created scenario
+
+    } catch (error) {
+        console.error("Error adding scenario: ", error);
+        alert("Could not add the new scenario. Check console for details.");
+    } finally {
+        button.disabled = false;
+        button.textContent = "Save Scenario";
+    }
+}
+
+async function loadScenario(e) {
+    if (e) e.preventDefault(); 
+
+    if (!currentScenarioId) {
+        const selector = document.getElementById('scenario-selector-dropdown');
+        if (!selector.value) {
+            alert("Please select a scenario to load.");
+            return;
+        }
+        currentScenarioId = selector.value;
+    }
+    
+    sessionStorage.setItem('currentScenarioId', currentScenarioId);
+
+    currentSceneId = null;
+    const scenesRef = collection(db, "scenes");
+    const q = query(scenesRef, where("scenarioId", "==", currentScenarioId), orderBy("sceneId"));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+        currentSceneId = querySnapshot.docs[0].data().sceneId;
+    }
+
+    document.getElementById('scenario-selection-modal').style.display = 'none';
+    document.getElementById('main-content').style.display = 'block';
+
+    if (isEditMode) {
+        document.getElementById('editor-sidebar').style.display = 'flex';
+        if (!document.querySelector('#editor-sidebar').dataset.initialized) {
+          initializeEditor();
+          document.querySelector('#editor-sidebar').dataset.initialized = true;
+        }
+        await populateSceneSelectors();
+    }
+
+    await updateScene();
+}
+
 // --- INITIALIZATION ---
 
 async function main() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const sceneId = urlParams.get('scene');
-    if(sceneId) currentSceneId = sceneId;
+    scenarioSelectionModal = document.getElementById('scenario-selection-modal');
+    addScenarioModal = document.getElementById('add-scenario-modal');
+    addScenarioForm = document.getElementById('add-scenario-form');
 
-    if (isEditMode) {
-        await initializeEditor();
-    }
-    await updateScene();
+    document.getElementById('scenario-selection-form').addEventListener('submit', loadScenario);
+    document.getElementById('create-new-scenario-button').addEventListener('click', () => {
+        addScenarioModal.style.display = 'flex';
+    });
+    addScenarioForm.addEventListener('submit', handleAddScenario);
     
-     const vrButton = document.getElementById('vr-button');
+    await initializeScenarioSelector();
+
+    const savedScenarioId = sessionStorage.getItem('currentScenarioId');
+    if (savedScenarioId) {
+        currentScenarioId = savedScenarioId;
+        loadScenario();
+    } else {
+        scenarioSelectionModal.style.display = 'flex';
+    }
+
+    const vrButton = document.getElementById('vr-button');
     vrButton.addEventListener('click', () => {
         document.querySelector('a-scene').enterVR();
     });

@@ -7,6 +7,7 @@
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <style>
       body { font-family: sans-serif; }
+      #main-content { display: none; } /* Initially hide the main content */
       #vr-button {
         position: absolute;
         top: 20px;
@@ -58,7 +59,8 @@
            margin-top: auto; 
        }
 
-       #editor-sidebar .selected-hotspot-actions button {
+       #editor-sidebar .selected-hotspot-actions button,
+       #exit-editor-button {
         width: 100%;
         padding: 12px;
         font-size: 16px;
@@ -73,6 +75,12 @@
        
        #delete-hotspot-button { background-color: #dc3545; }
        #delete-hotspot-button:hover { background-color: #c82333; }
+       #exit-editor-button { 
+         background-color: #6c757d;
+         margin-top: 10px;
+       }
+      #exit-editor-button:hover { background-color: #5a6268; }
+
 
       #hotspot-details-container .detail-item,
       .scene-selector-container {
@@ -201,61 +209,80 @@
     </style>
   </head>
   <body>
-    <a-scene>
-      <a-assets>
-      </a-assets>
-
-      <a-sky id="sky" src="./public/1.jpg" rotation="0 -130 0" class="placement-target"></a-sky>
-      
-      <a-entity id="nav-vr-container"></a-entity>
-
-      <a-camera wasd-controls-enabled="false">
-        <a-cursor raycaster="objects: .clickable, .placement-target"></a-cursor>
-      </a-camera>
-
-    </a-scene>
-
-    <div id="editor-sidebar">
-      <h3>Edit Mode</h3>
-      
-      <div class="scene-selector-container" style="margin-bottom: 20px; border-bottom: 1px solid #555; padding-bottom: 20px;">
-        <label for="scene-selector">Go to Scene</label>
-        <select id="scene-selector"></select>
-      </div>
-
-      <div class="actions-container">
-        <button id="add-scene-button" class="sidebar-action-button">Add New Scene</button>
-        <button id="add-hotspot-button" class="sidebar-action-button">Add New Hotspot</button>
-      </div>
-      
-      <h4>Edit Hotspots</h4>
-      <div id="scene-list-container" style="flex-grow: 1; max-height: 35%; overflow-y: auto;">
-        <p>Loading hotspots...</p>
-      </div>
-
-      <div id="hotspot-details-container" style="display: none; margin-top: 20px; border-top: 1px solid #555; padding-top: 15px;">
-          <h5>Selected Hotspot</h5>
-          <div class="detail-item">
-              <label for="hotspot-yaw">Yaw</label>
-              <input type="number" id="hotspot-yaw" step="0.1">
+    <div id="scenario-selection-modal" class="modal-overlay">
+      <div class="modal-content">
+        <h3>Select a Scenario</h3>
+        <form id="scenario-selection-form">
+          <label for="scenario-selector-dropdown">Choose a tour:</label>
+          <select id="scenario-selector-dropdown"></select>
+          <div class="modal-actions">
+            <button type="submit" id="load-scenario-button">Load Scenario</button>
           </div>
-          <div class="detail-item">
-              <label for="hotspot-pitch">Pitch</label>
-              <input type="number" id="hotspot-pitch" step="0.1">
-          </div>
-          <div class="detail-item">
-              <label for="hotspot-radius">Radius</label>
-              <input type="number" id="hotspot-radius" step="0.05">
-          </div>
-      </div>
-
-      <div class="selected-hotspot-actions">
-        <button id="save-hotspot-button">Save Position/Size</button>
-        <button id="delete-hotspot-button">Delete Hotspot</button>
+        </form>
+        <div class="modal-actions" style="margin-top: 20px; border-top: 1px solid #555; padding-top: 20px;">
+            <button type="button" id="create-new-scenario-button" class="sidebar-action-button">Create New Scenario</button>
+        </div>
       </div>
     </div>
+    
+    <div id="main-content">
+      <a-scene>
+        <a-assets>
+        </a-assets>
 
-    <button id="vr-button">Enter VR</button>
+        <a-sky id="sky" src="./public/1.jpg" rotation="0 -130 0" class="placement-target"></a-sky>
+        
+        <a-entity id="nav-vr-container"></a-entity>
+
+        <a-camera wasd-controls-enabled="false">
+          <a-cursor raycaster="objects: .clickable, .placement-target"></a-cursor>
+        </a-camera>
+
+      </a-scene>
+
+      <div id="editor-sidebar">
+        <h3>Edit Mode</h3>
+        
+        <div class="scene-selector-container" style="margin-bottom: 20px; border-bottom: 1px solid #555; padding-bottom: 20px;">
+          <label for="scene-selector">Go to Scene</label>
+          <select id="scene-selector"></select>
+        </div>
+
+        <div class="actions-container">
+          <button id="add-scene-button" class="sidebar-action-button">Add New Scene</button>
+          <button id="add-hotspot-button" class="sidebar-action-button">Add New Hotspot</button>
+        </div>
+        
+        <h4>Edit Hotspots</h4>
+        <div id="scene-list-container" style="flex-grow: 1; max-height: 35%; overflow-y: auto;">
+          <p>Loading hotspots...</p>
+        </div>
+
+        <div id="hotspot-details-container" style="display: none; margin-top: 20px; border-top: 1px solid #555; padding-top: 15px;">
+            <h5>Selected Hotspot</h5>
+            <div class="detail-item">
+                <label for="hotspot-yaw">Yaw</label>
+                <input type="number" id="hotspot-yaw" step="0.1">
+            </div>
+            <div class="detail-item">
+                <label for="hotspot-pitch">Pitch</label>
+                <input type="number" id="hotspot-pitch" step="0.1">
+            </div>
+            <div class="detail-item">
+                <label for="hotspot-radius">Radius</label>
+                <input type="number" id="hotspot-radius" step="0.05">
+            </div>
+        </div>
+
+        <div class="selected-hotspot-actions">
+          <button id="save-hotspot-button">Save Position/Size</button>
+          <button id="delete-hotspot-button">Delete Hotspot</button>
+        </div>
+        <button id="exit-editor-button">Exit Editor</button>
+      </div>
+
+      <button id="vr-button">Enter VR</button>
+    </div>
 
     <!-- MODALS -->
     <div id="add-scene-modal" class="modal-overlay" style="display: none;">
@@ -288,6 +315,20 @@
           </div>
         </form>
       </div>
+    </div>
+
+    <div id="add-scenario-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3>Create New Scenario</h3>
+            <form id="add-scenario-form">
+                <label for="scenario-name">Scenario Name</label>
+                <input type="text" id="scenario-name" name="scenario-name" required>
+                <div class="modal-actions">
+                    <button type="submit" id="save-scenario-button">Save Scenario</button>
+                    <button type="button" id="cancel-scenario-button" class="cancel-button">Cancel</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script type="module" src="./firebase-init.js"></script>
