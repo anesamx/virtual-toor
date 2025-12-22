@@ -9,10 +9,10 @@
       body { font-family: sans-serif; }
       #main-content { display: none; } /* Initially hide the main content */
       #vr-button {
-        position: absolute;
+        position: fixed;
         top: 20px;
         right: 20px;
-        z-index: 10;
+        z-index: 9999;
         padding: 10px 20px;
         background-color: #007BFF;
         color: white;
@@ -21,6 +21,22 @@
         cursor: pointer;
       }
       #vr-button:hover { background-color: #0056b3; }
+
+      #exit-vr-button-ui {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        padding: 10px 20px;
+        background-color: #f44336;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        display: none; /* Initially hidden */
+      }
+      #exit-vr-button-ui:hover { background-color: #c82333; }
+
 
       #editor-sidebar {
         position: absolute;
@@ -238,11 +254,6 @@
           <a-cursor raycaster="objects: .clickable, .placement-target"></a-cursor>
         </a-camera>
 
-        <a-entity id="exit-vr-button" position="0 -0.8 -2" visible="false">
-            <a-box color="#f44336" depth="0.05" height="0.3" width="0.8" class="clickable"></a-box>
-            <a-text value="Exit VR" align="center" color="#FFFFFF" position="0 0 0.05" scale="0.3 0.3 0.3"></a-text>
-        </a-entity>
-
       </a-scene>
 
       <div id="exit-vr-modal" class="modal-overlay" style="display: none;">
@@ -298,6 +309,8 @@
       </div>
 
       <button id="vr-button">Enter VR</button>
+      <button id="exit-vr-button-ui">Exit VR</button>
+
     </div>
 
     <!-- MODALS -->

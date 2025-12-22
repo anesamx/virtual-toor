@@ -2,22 +2,49 @@ export default {
   async fetch(request, env) {
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': '*', // Allow all headers
+      'Access-Control-Allow-Methods': 'GET, POST, HEAD, OPTIONS',
+      'Access-Control-Allow-Headers': '*',
     };
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders });
     }
 
+    const url = new URL(request.url);
+    const key = url.pathname.slice(1);
+
+    if (request.method === 'HEAD' || request.method === 'GET') {
+      if (!env.R2_BUCKET) {
+        throw new Error('R2_BUCKET binding is not configured.');
+      }
+
+      const object = await env.R2_BUCKET.get(key);
+
+      if (object === null) {
+        return new Response('Object Not Found', { status: 404 });
+      }
+
+      const headers = {
+        ...corsHeaders,
+        'Content-Type': object.httpMetadata.contentType,
+        'Content-Length': object.size,
+      };
+
+      if (request.method === 'HEAD') {
+        return new Response(null, { headers });
+      }
+
+      return new Response(object.body, {
+        headers,
+      });
+    }
+
     if (request.method === 'POST') {
       try {
-        // Check for the R2 binding first.
         if (!env.R2_BUCKET) {
           throw new Error('R2_BUCKET binding is not configured.');
         }
 
-        // Get the image file from the form data.
         const formData = await request.formData();
         const file = formData.get('file');
 
@@ -25,16 +52,13 @@ export default {
           throw new Error('No file was uploaded.');
         }
 
-        // Create a unique key for the file in R2.
-        const key = `scenes/${Date.now()}-${file.name}`;
+        const uploadKey = `scenes/${Date.now()}-${file.name}`;
 
-        // Upload the file directly to the R2 bucket.
-        await env.R2_BUCKET.put(key, file.stream(), {
+        await env.R2_BUCKET.put(uploadKey, file.stream(), {
           httpMetadata: { contentType: file.type },
         });
 
-        // Return the public URL of the uploaded file.
-        return new Response(JSON.stringify({ success: true, publicUrl: key }), {
+        return new Response(JSON.stringify({ success: true, publicUrl: uploadKey }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
 

@@ -87,7 +87,16 @@ async function updateScene() {
         return;
     }
     const sceneDoc = sceneQuerySnapshot.docs[0];
-    sky.setAttribute('src', sceneDoc.data().image);
+    const imageUrl = sceneDoc.data().image;
+
+    // Dynamically construct the correct URL to ensure compatibility with old and new scenes
+    let finalImageUrl = imageUrl;
+    if (imageUrl && imageUrl.includes('scenes/')) { // Check if it is a scene URL
+        const sceneIdentifier = imageUrl.split('scenes/')[1];
+        finalImageUrl = `${WORKER_URL}/scenes/${sceneIdentifier}`;
+    }
+
+    sky.setAttribute('src', finalImageUrl);
     if (isEditMode && sceneSelector) sceneSelector.value = currentSceneId;
 
     const hotspotsRef = collection(db, "hotspots");
@@ -300,7 +309,7 @@ async function handleAddScene(e) {
         
         // --- Step 2: Construct the public URL and save to Firestore ---
         saveBtn.textContent = 'Saving Scene...';
-        const finalImageUrl = `${R2_PUBLIC_URL}/${result.publicUrl}`;
+        const finalImageUrl = `${WORKER_URL}/${result.publicUrl}`;
         
         const scenesRef = collection(db, 'scenes');
         const q = query(scenesRef, where("scenarioId", "==", currentScenarioId), orderBy('sceneId', 'desc'));
@@ -577,7 +586,7 @@ async function loadScenario(e) {
 
     currentSceneId = null;
     const scenesRef = collection(db, "scenes");
-    const q = query(scenesRef, where("scenarioId", "==", currentScenarioId), orderBy("sceneId"));
+    const q = query(scenesRef, where("scenarioId", "==", currentScenarioId), orderBy('sceneId'));
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
         currentSceneId = querySnapshot.docs[0].data().sceneId;
@@ -622,37 +631,25 @@ async function main() {
     }
 
     const vrButton = document.getElementById('vr-button');
-    vrButton.addEventListener('click', () => {
-        document.querySelector('a-scene').enterVR();
-    });
-
+    const exitVrButtonUI = document.getElementById('exit-vr-button-ui');
     const sceneEl = document.querySelector('a-scene');
-    const exitVrButton = document.getElementById('exit-vr-button');
-    const exitVrModal = document.getElementById('exit-vr-modal');
-    const exitVrConfirm = document.getElementById('exit-vr-confirm');
-    const exitVrCancel = document.getElementById('exit-vr-cancel');
 
-    sceneEl.addEventListener('enter-vr', () => {
-        if (!isEditMode) {
-            exitVrButton.setAttribute('visible', 'true');
-        }
+    vrButton.addEventListener('click', () => {
+        sceneEl.enterVR();
     });
 
-    sceneEl.addEventListener('exit-vr', () => {
-        exitVrButton.setAttribute('visible', 'false');
-        exitVrModal.style.display = 'none';
-    });
-
-    exitVrButton.addEventListener('click', () => {
-        exitVrModal.style.display = 'flex';
-    });
-
-    exitVrConfirm.addEventListener('click', () => {
+    exitVrButtonUI.addEventListener('click', () => {
         sceneEl.exitVR();
     });
 
-    exitVrCancel.addEventListener('click', () => {
-        exitVrModal.style.display = 'none';
+    sceneEl.addEventListener('enter-vr', () => {
+        vrButton.style.display = 'none';
+        exitVrButtonUI.style.display = 'block';
+    });
+
+    sceneEl.addEventListener('exit-vr', () => {
+        vrButton.style.display = 'block';
+        exitVrButtonUI.style.display = 'none';
     });
 
 }
