@@ -6,8 +6,13 @@
     <meta name="description" content="Immersive tour editor.">
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <style>
-      body { font-family: sans-serif; }
-      #main-content { display: none; } /* Initially hide the main content */
+      @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+      body {
+        font-family: 'Poppins', sans-serif;
+        background-color: #090a0f;
+      }
+      #main-content { display: block; } 
       #vr-button {
         position: fixed;
         top: 20px;
@@ -19,8 +24,12 @@
         border: none;
         border-radius: 5px;
         cursor: pointer;
+        transition: all 0.3s ease;
       }
-      #vr-button:hover { background-color: #0056b3; }
+      #vr-button:hover { 
+        background-color: #0056b3;
+        box-shadow: 0 0 15px rgba(0, 123, 255, 0.7);
+      }
 
       #go-back-button {
         position: fixed;
@@ -33,9 +42,13 @@
         border: none;
         border-radius: 5px;
         cursor: pointer;
+        transition: all 0.3s ease;
       }
 
-      #go-back-button:hover { background-color: #5a6268; }
+      #go-back-button:hover { 
+        background-color: #5a6268;
+        box-shadow: 0 0 15px rgba(108, 117, 125, 0.7);
+      }
 
       #exit-vr-button-ui {
         position: fixed;
@@ -49,8 +62,12 @@
         border-radius: 5px;
         cursor: pointer;
         display: none; /* Initially hidden */
+        transition: all 0.3s ease;
       }
-      #exit-vr-button-ui:hover { background-color: #c82333; }
+      #exit-vr-button-ui:hover { 
+        background-color: #c82333;
+        box-shadow: 0 0 15px rgba(244, 67, 54, 0.7);
+      }
 
 
       #editor-sidebar {
@@ -99,18 +116,28 @@
         border: none;
         border-radius: 5px;
         cursor: pointer;
+        transition: all 0.3s ease;
       }
 
        #save-hotspot-button { background-color: #28a745; }
-       #save-hotspot-button:hover { background-color: #218838; }
+       #save-hotspot-button:hover { 
+         background-color: #218838; 
+         box-shadow: 0 0 15px rgba(40, 167, 69, 0.7);
+       }
        
        #delete-hotspot-button { background-color: #dc3545; }
-       #delete-hotspot-button:hover { background-color: #c82333; }
+       #delete-hotspot-button:hover { 
+         background-color: #c82333; 
+         box-shadow: 0 0 15px rgba(220, 53, 69, 0.7);
+       }
        #exit-editor-button { 
          background-color: #6c757d;
          margin-top: 10px;
        }
-      #exit-editor-button:hover { background-color: #5a6268; }
+      #exit-editor-button:hover { 
+        background-color: #5a6268; 
+        box-shadow: 0 0 15px rgba(108, 117, 125, 0.7);
+      }
 
 
       #hotspot-details-container .detail-item,
@@ -154,9 +181,22 @@
           border-radius: 5px;
           cursor: pointer;
           text-align: center;
+          transition: all 0.3s ease;
       }
       #editor-sidebar .sidebar-action-button:hover {
           background-color: #0056b3;
+          box-shadow: 0 0 15px rgba(0, 123, 255, 0.7);
+      }
+
+      /* --- Animation Keyframes --- */
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
       }
 
       /* --- Modal Styles --- */
@@ -166,11 +206,12 @@
           left: 0;
           width: 100%;
           height: 100%;
-          background-color: rgba(0, 0, 0, 0.7);
+          background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
           z-index: 100;
-          display: flex;
+          display: none; /* Hidden by default */
           align-items: center;
           justify-content: center;
+          animation: fadeIn 0.5s ease;
       }
 
       .modal-content {
@@ -179,8 +220,9 @@
           border-radius: 10px;
           width: 90%;
           max-width: 400px;
-          box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+          box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
           color: white;
+          animation: slideUp 0.6s ease-out;
       }
 
       .modal-content h3 {
@@ -188,6 +230,7 @@
           border-bottom: 1px solid #555;
           padding-bottom: 15px;
           margin-bottom: 20px;
+          font-weight: 600;
       }
 
       .modal-content form label {
@@ -219,6 +262,8 @@
           border-radius: 5px;
           border: none;
           cursor: pointer;
+          font-weight: 600;
+          transition: all 0.3s ease;
       }
 
       .modal-actions button[type="submit"] {
@@ -227,6 +272,7 @@
       }
       .modal-actions button[type="submit"]:hover {
           background-color: #218838;
+          box-shadow: 0 0 15px rgba(40, 167, 69, 0.7);
       }
 
       .modal-actions button[type="button"] {
@@ -235,6 +281,7 @@
       }
       .modal-actions button[type="button"]:hover {
           background-color: #5a6268;
+          box-shadow: 0 0 15px rgba(108, 117, 125, 0.7);
       }
 
     </style>
@@ -261,15 +308,17 @@
         <a-assets>
         </a-assets>
 
-        <a-sky id="sky" src="./public/1.jpg" rotation="0 -130 0" class="placement-target"></a-sky>
-        
-        <a-sphere position="0 -5 -7" radius="0.5" color="red"></a-sphere>
-
-        <a-entity id="nav-vr-container"></a-entity>
-
         <a-camera wasd-controls-enabled="false">
           <a-cursor raycaster="objects: .clickable, .placement-target"></a-cursor>
         </a-camera>
+
+        <a-sky id="sky" src="./public/1.jpg" rotation="0 -130 0" class="placement-target"></a-sky>
+        
+        <a-sphere position="0 -5 -7" radius="0.8" color="red" id="exit-bubble">
+          <a-text value="Exit" align="center" position="0 1 0" color="white" scale="1.5 1.5 1.5" billboard></a-text>
+        </a-sphere>
+
+        <a-entity id="nav-vr-container"></a-entity>
 
       </a-scene>
 
