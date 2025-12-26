@@ -1,6 +1,6 @@
 # **AI Development Guidelines for Modern Web Projects in Firebase Studio**
 
-These guidelines define the operational principles and capabilities of an AI agent (e.g., Gemini) interacting with framework-less web projects (HTML, CSS, JavaScript) within the Firebase Studio environment. The goal is to enable an efficient, automated, and error-resilient application design and development workflow that leverages modern, widely supported web standards (Baseline).
+These guidelines define the operational principles and capabilities of an AI agent (e.g., Gemini) interacting with framework-less web projects (HTML, CSS, JavaScript) within the Firebase Studio environment. The goal is to enable an efficient, automated, andd error-resilient application design and development workflow that leverages modern, widely supported web standards (Baseline).
 
 ## **Environment & Context Awareness**
 
