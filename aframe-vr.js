@@ -622,13 +622,7 @@ async function main() {
     
     await initializeScenarioSelector();
 
-    const savedScenarioId = sessionStorage.getItem('currentScenarioId');
-    if (savedScenarioId) {
-        currentScenarioId = savedScenarioId;
-        loadScenario();
-    } else {
-        scenarioSelectionModal.style.display = 'flex';
-    }
+    scenarioSelectionModal.style.display = 'flex';
 
     const vrButton = document.getElementById('vr-button');
     const exitVrButtonUI = document.getElementById('exit-vr-button-ui');
