@@ -28,5 +28,5 @@ This project is an immersive VR tour experience built with A-Frame. It allows us
 
 ## Current Plan
 
-*   **Task:** Improve the collision physics of the interactive bubbles.
+*   **Task:** Reduce the bounciness of the interactive bubbles.
 *   **Status:** Completed.
