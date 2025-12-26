@@ -4,10 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Immersive Experiences</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
   <link href='./style.css' rel='stylesheet'>
 </head>
 <body>
+  <div class="background-shapes">
+    <div class="shape shape1"></div>
+    <div class="shape shape2"></div>
+    <div class="shape shape3"></div>
+    <div class="shape shape4"></div>
+  </div>
+  <div id="cursor-bubble"></div>
+
   <main>
     <section class="hero">
       <div class="hero-text">
@@ -16,18 +24,11 @@
       </div>
       <div class="button-container">
         <a href="./aframe-vr.html" class="button vr-tour">VR</a>
-        <a href="./aframe-vr.html?edit=true" class="button vr-tour">Edit</a>
+        <a href="./aframe-vr.html?edit=true" class="button edit-button">Edit</a>
       </div>
     </section>
-    <section class="features">
-      <feature-card image="./public/1.jpg" title="Stunning Vistas" description="Explore breathtaking panoramic views from around the globe."></feature-card>
-      <feature-card image="./public/2.jpg" title="Interactive Hotspots" description="Navigate through different scenes and uncover hidden details."></feature-card>
-      <feature-card image="./public/3.jpg" title="Full Immersion" description="Experience true presence with our VR-ready adventures."></feature-card>
-    </section>
   </main>
-  <footer>
-    <p>&copy; 2024 Immersive Experiences. All rights reserved.</p>
-  </footer>
+  
   <script defer type="text/javascript" src="./main.js"></script>
 </body>
 </html>

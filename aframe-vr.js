@@ -628,6 +628,7 @@ async function main() {
     const goBackButton = document.getElementById('go-back-button');
     const exitVrButtonUI = document.getElementById('exit-vr-button-ui');
     const sceneEl = document.querySelector('a-scene');
+    const exitBubble = document.getElementById('exit-bubble');
 
     vrButton.addEventListener('click', () => {
         sceneEl.enterVR();
@@ -636,6 +637,12 @@ async function main() {
     goBackButton.addEventListener('click', () => {
         window.location.href = '/';
     });
+
+    if (exitBubble) {
+        exitBubble.addEventListener('click', () => {
+            window.location.href = '/';
+        });
+    }
 
     exitVrButtonUI.addEventListener('click', () => {
         sceneEl.exitVR();
