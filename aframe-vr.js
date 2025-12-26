@@ -625,11 +625,16 @@ async function main() {
     scenarioSelectionModal.style.display = 'flex';
 
     const vrButton = document.getElementById('vr-button');
+    const goBackButton = document.getElementById('go-back-button');
     const exitVrButtonUI = document.getElementById('exit-vr-button-ui');
     const sceneEl = document.querySelector('a-scene');
 
     vrButton.addEventListener('click', () => {
         sceneEl.enterVR();
+    });
+
+    goBackButton.addEventListener('click', () => {
+        window.location.href = '/';
     });
 
     exitVrButtonUI.addEventListener('click', () => {
