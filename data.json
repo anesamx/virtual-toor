@@ -1,0 +1,29 @@
+{
+  "images": [],
+  "scenarios": [
+    {
+      "id": "scen-1784559771988",
+      "name": "ext",
+      "panoramaUrl": "/uploads/1784559771924-184222688.png",
+      "isHidden": false
+    },
+    {
+      "id": "scen-1784559907942",
+      "name": "aze'r",
+      "panoramaUrl": "/uploads/1784559907908-959238436.png",
+      "isHidden": false
+    },
+    {
+      "id": "scen-1784560088757",
+      "name": "45",
+      "panoramaUrl": "/uploads/1784560088714-831884987.tif",
+      "isHidden": false
+    },
+    {
+      "id": "scen-1784560110684",
+      "name": "sellm",
+      "panoramaUrl": "/uploads/1784560110639-390050800.tif",
+      "isHidden": false
+    }
+  ]
+}

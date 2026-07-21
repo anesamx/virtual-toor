@@ -1,34 +1,48 @@
-# VR Architecture Portfolio
+# VR Architecture Portfolio Blueprint
 
 ## Overview
 
-This project is a virtual reality architecture portfolio designed to showcase architectural designs in an immersive 3D environment. The application is built using modern web technologies, including React for the user interface and Three.js for the VR experience.
+This project is a virtual reality architecture portfolio designed to showcase architectural designs in an immersive 3D environment. The application is built using React (loaded via CDN) for the user interface, Express for the backend server, and Three.js for rendering the VR experience.
 
 ## Design and Features
 
 ### Landing Page
+*   **Layout:** Clean, modern, responsive layout using Tailwind CSS.
+*   **Hero Section:** Highlights the featured project (e.g., "Villa Moderne").
+*   **Gallery:** Displays static images of the project.
+*   **Interactive Call to Action:** "Entrer dans la Visite Virtuelle" launches the 3D VR environment.
 
-*   **Layout:** A clean, modern, and responsive design featuring a full-screen layout.
-*   **Header:** A prominent headline introducing the featured project (e.g., "Modern Villa").
-*   **Image Gallery:** A grid of high-quality images showcasing the architectural design.
-*   **Call to Action:** A clear and compelling button that invites users to "Enter VR Tour."
-*   **Footer:** A simple footer with copyright information.
+### VR Tour Viewer (Viewer Session)
+*   **3D Panorama Spheres:** Renders a 360-degree interactive environment using Three.js and `OrbitControls`.
+*   **VR Support:** Leverages WebXR (via `VRButton.js`) for virtual reality headsets.
+*   **In-VR UI Menu:** Allows VR users to select different scenes/scenarios using raycasting controllers.
+*   **Real-time Synchronization:** Listens to socket events from the admin to change active scenes dynamically.
+*   **Head Tracking:** Sends real-time look direction (camera rotation angles) back to the server to share with the admin session.
 
-### Styling
+### Admin Dashboard (Admin Session)
+*   **Access Control:** Simple password protection (`121212`) to verify the administrator.
+*   **Scenario Management:** Upload new panorama images, create scenes (scenarios), hide/show scenarios, or delete them.
+*   **Real-time Cinema Control:** Force all connected VR viewers to display a specific scene immediately.
+*   **Live Gaze Mirroring:** Displays active viewers and replicates their looking direction in a miniature 3D scene in real-time.
 
-*   **Framework:** Tailwind CSS is used for utility-first styling.
-*   **Color Palette:** A sophisticated and modern color scheme with a dark background (`bg-gray-900`) and white text.
-*   **Typography:** A clean and readable font with a large, bold headline.
-*   **Interactivity:** The "Enter VR Tour" button has a hover effect that changes its color and size to provide visual feedback.
+---
 
-### VR Tour
+## Current Plan: Cinema Mode and Real-time Gaze Replication
 
-*   This feature is not yet implemented.
+We are implementing real-time communications to bridge the PC (Admin) and VR (Viewer) sessions:
 
-## Current Plan
+1.  **Backend Integration:**
+    *   Install `socket.io`.
+    *   Refactor `server.js` to initialize Socket.io alongside Express.
+    *   Add message routers for `join` (viewer/admin), `admin-select-scene`, `viewer-gaze-update`, and connection bookkeeping.
 
-*   The immediate next step is to build the VR tour functionality. This will involve:
-    *   Integrating the Three.js library for 3D rendering.
-    *   Creating a 3D scene with a camera and renderer.
-    *   Loading a 3D model of the architectural design.
-    *   Implementing controls for navigating the VR environment.
+2.  **Frontend Viewer Integration:**
+    *   Include Socket.io client in `index.html`.
+    *   Connect to socket in `VRScene` inside `main.js`.
+    *   Receive `server-change-scenario` events to switch scenes.
+    *   Throttled tracking of the camera's rotation, sending Euler/Quaternion values to the server.
+
+3.  **Frontend Admin Controls:**
+    *   Display active viewer counts and individual viewer states.
+    *   Add a "Cinema Mode" control panel to broadcast scene changes.
+    *   Render a mini 3D model that reflects the exact camera orientation of the viewer.
