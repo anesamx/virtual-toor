@@ -2,21 +2,45 @@
   "images": [],
   "scenarios": [
     {
-      "id": "scen-1784559771988",
-      "name": "ext",
-      "panoramaUrl": "/uploads/1784559771924-184222688.png",
-      "isHidden": false
-    },
-    {
       "id": "scen-1784559907942",
       "name": "aze'r",
       "panoramaUrl": "/uploads/1784559907908-959238436.png",
       "isHidden": false
     },
     {
-      "id": "scen-1784630525468",
+      "id": "scen-1784804695359",
       "name": "1",
-      "panoramaUrl": "/uploads/1784630525235-295674160.jpg",
+      "panoramaUrl": "/uploads/1784804692275-90102047.jpg",
+      "isHidden": false
+    },
+    {
+      "id": "scen-1784804715598",
+      "name": "ext 1",
+      "panoramaUrl": "/uploads/1784804711811-360173671.jpg",
+      "isHidden": false
+    },
+    {
+      "id": "scen-1784804730734",
+      "name": "2",
+      "panoramaUrl": "/uploads/1784804727096-262627963.jpg",
+      "isHidden": false
+    },
+    {
+      "id": "scen-1784804756073",
+      "name": "3",
+      "panoramaUrl": "/uploads/1784804752975-977638709.jpg",
+      "isHidden": false
+    },
+    {
+      "id": "scen-1784804782093",
+      "name": "4",
+      "panoramaUrl": "/uploads/1784804777849-89325629.jpg",
+      "isHidden": false
+    },
+    {
+      "id": "scen-1784804816818",
+      "name": "5",
+      "panoramaUrl": "/uploads/1784804813234-174885005.jpg",
       "isHidden": false
     }
   ]
