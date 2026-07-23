@@ -3,6 +3,7 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const sharp = require('sharp');
 
 const app = express();
 const server = require('http').createServer(app);
@@ -62,13 +63,31 @@ app.post('/api/data', (req, res) => {
   }
 });
 
-// Upload image
-app.post('/api/upload', upload.single('image'), (req, res) => {
+// Upload image (and convert to compressed JPEG)
+app.post('/api/upload', upload.single('image'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
-  const imageUrl = `/uploads/${req.file.filename}`;
-  res.json({ imageUrl });
+  try {
+    const inputPath = req.file.path;
+    const filenameWithoutExt = path.basename(req.file.filename, path.extname(req.file.filename));
+    const outputFilename = filenameWithoutExt + '.jpg';
+    const outputPath = path.join(__dirname, 'uploads', outputFilename);
+
+    // Convert to jpeg and compress to 80% quality (excellent ratio of size to visual quality)
+    await sharp(inputPath)
+      .jpeg({ quality: 80 })
+      .toFile(outputPath);
+
+    // Remove the raw uploaded file (which could be a heavy PNG or TIFF)
+    fs.unlinkSync(inputPath);
+
+    const imageUrl = `/uploads/${outputFilename}`;
+    res.json({ imageUrl });
+  } catch (error) {
+    console.error('Image processing failed:', error);
+    res.status(500).json({ error: 'Failed to process image' });
+  }
 });
 
 // Socket.io Real-Time Communications
@@ -140,6 +159,6 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
+server.listen(port, '0.0.0.0', () => {
+  console.log(`Server listening on port ${port} (accessible on local network)`);
 });

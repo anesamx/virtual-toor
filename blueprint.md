@@ -2,47 +2,28 @@
 
 ## Overview
 
-This project is a virtual reality architecture portfolio designed to showcase architectural designs in an immersive 3D environment. The application is built using React (loaded via CDN) for the user interface, Express for the backend server, and Three.js for rendering the VR experience.
+This project is a virtual reality architecture portfolio designed for a synced "Cinema Mode" tour. A PC Admin dashboard controls the active scene of connected VR viewer sessions (such as VR headsets) and mirrors their look direction in real time.
 
 ## Design and Features
 
-### Landing Page
-*   **Layout:** Clean, modern, responsive layout using Tailwind CSS.
-*   **Hero Section:** Highlights the featured project (e.g., "Villa Moderne").
-*   **Gallery:** Displays static images of the project.
-*   **Interactive Call to Action:** "Entrer dans la Visite Virtuelle" launches the 3D VR environment.
+### VR Cinema Viewer (Root Viewer Session)
+*   **Direct Immersion:** Navigating to the root URL (`/`) automatically enters the interactive 3D VR environment immediately.
+*   **Clean Viewport:** The VR viewer interface is stripped of all interactive sidebars, menus, and buttons. It displays only the 360-degree panorama sphere and the WebXR button.
+*   **Cinema Synchronization:** Receives server commands to switch scenes in real time.
+*   **Head/Gaze Tracking:** Transmits its real-time camera rotation to the server for the admin to follow.
 
-### VR Tour Viewer (Viewer Session)
-*   **3D Panorama Spheres:** Renders a 360-degree interactive environment using Three.js and `OrbitControls`.
-*   **VR Support:** Leverages WebXR (via `VRButton.js`) for virtual reality headsets.
-*   **In-VR UI Menu:** Allows VR users to select different scenes/scenarios using raycasting controllers.
-*   **Real-time Synchronization:** Listens to socket events from the admin to change active scenes dynamically.
-*   **Head Tracking:** Sends real-time look direction (camera rotation angles) back to the server to share with the admin session.
+### Admin Dashboard (PC Controller Session)
+*   **Access Control:** Accessed directly via `/#admin` (no password check).
+*   **Régie de Contrôle VR (Cinema Control Room):** Tracks active viewer sessions and displays a live 3D preview mirroring their gaze.
+*   **VR Scenarios Management:** Allows administrators to upload new 360-degree scenes, name them, delete them, and broadcast/project them to all viewers.
 
-### Admin Dashboard (Admin Session)
-*   **Access Control:** Simple password protection (`121212`) to verify the administrator.
-*   **Scenario Management:** Upload new panorama images, create scenes (scenarios), hide/show scenarios, or delete them.
-*   **Real-time Cinema Control:** Force all connected VR viewers to display a specific scene immediately.
-*   **Live Gaze Mirroring:** Displays active viewers and replicates their looking direction in a miniature 3D scene in real-time.
+### Automatic Asset Optimization
+*   **Automated Conversion:** When an image is uploaded (including heavy formats like `.png` or unsupported formats like `.tif`), the server uses the `sharp` library to automatically convert the image to compressed JPEG (`.jpg`).
+*   **Cleanup:** The server automatically deletes the raw uploaded files to conserve space and only stores optimized `.jpg` images, speeding up wireless downloads on mobile VR headsets.
 
 ---
 
-## Current Plan: Cinema Mode and Real-time Gaze Replication
+## Current Plan: Automatic JPEG Conversion
 
-We are implementing real-time communications to bridge the PC (Admin) and VR (Viewer) sessions:
-
-1.  **Backend Integration:**
-    *   Install `socket.io`.
-    *   Refactor `server.js` to initialize Socket.io alongside Express.
-    *   Add message routers for `join` (viewer/admin), `admin-select-scene`, `viewer-gaze-update`, and connection bookkeeping.
-
-2.  **Frontend Viewer Integration:**
-    *   Include Socket.io client in `index.html`.
-    *   Connect to socket in `VRScene` inside `main.js`.
-    *   Receive `server-change-scenario` events to switch scenes.
-    *   Throttled tracking of the camera's rotation, sending Euler/Quaternion values to the server.
-
-3.  **Frontend Admin Controls:**
-    *   Display active viewer counts and individual viewer states.
-    *   Add a "Cinema Mode" control panel to broadcast scene changes.
-    *   Render a mini 3D model that reflects the exact camera orientation of the viewer.
+1.  **Backend Dependencies:** Add `sharp` for image compression.
+2.  **API Upload Refactoring:** Update `/api/upload` route in `server.js` to process uploads into JPEG, delete raw uploads, and return optimized image URLs.
