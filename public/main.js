@@ -251,6 +251,7 @@ const AdminPanel = ({ data, setData }) => {
   const [showAddScenario, setShowAddScenario] = useState(false);
   const [newScenarioName, setNewScenarioName] = useState('');
   const [newScenarioImg, setNewScenarioImg] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(null);
 
   useEffect(() => {
     // Join as admin
@@ -275,25 +276,68 @@ const AdminPanel = ({ data, setData }) => {
 
 
   const handleCreateScenario = async () => {
-    if(!newScenarioName || !newScenarioImg) return;
-    const formData = new FormData();
-    formData.append('image', newScenarioImg);
-    const res = await fetch('/api/upload', { method: 'POST', body: formData });
-    const { imageUrl } = await res.json();
+    if(!newScenarioName || !newScenarioImg) {
+      alert("Veuillez saisir un nom et sélectionner une image.");
+      return;
+    }
     
-    const newScen = {
-      id: 'scen-' + Date.now(),
-      name: newScenarioName,
-      panoramaUrl: imageUrl,
-      isHidden: false
-    };
-    
-    const newData = { ...data, scenarios: [...data.scenarios, newScen] };
-    await fetch('/api/data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newData) });
-    setData(newData);
-    setNewScenarioName('');
-    setNewScenarioImg(null);
-    setShowAddScenario(false);
+    try {
+      setUploadProgress(0); // Start progress
+
+      const formData = new FormData();
+      formData.append('image', newScenarioImg);
+      
+      // Use XMLHttpRequest for upload progress
+      const imageUrl = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/upload', true);
+        
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = Math.round((event.loaded / event.total) * 100);
+            setUploadProgress(percentComplete);
+          }
+        };
+        
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            const response = JSON.parse(xhr.responseText);
+            resolve(response.imageUrl);
+          } else {
+            reject(new Error('Erreur lors du téléchargement. Le serveur a répondu: ' + xhr.status));
+          }
+        };
+        
+        xhr.onerror = () => reject(new Error('Erreur réseau lors du téléchargement.'));
+        xhr.send(formData);
+      });
+      
+      setUploadProgress('Traitement...'); // Show processing state after upload completes
+
+      const newScen = {
+        id: 'scen-' + Date.now(),
+        name: newScenarioName,
+        panoramaUrl: imageUrl,
+        isHidden: false
+      };
+      
+      const newData = { ...data, scenarios: [...data.scenarios, newScen] };
+      const res2 = await fetch('/api/data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newData) });
+      
+      if (!res2.ok) {
+        throw new Error('Erreur lors de la sauvegarde des données');
+      }
+      
+      setData(newData);
+      setNewScenarioName('');
+      setNewScenarioImg(null);
+      setShowAddScenario(false);
+    } catch (err) {
+      alert("Erreur: " + err.message);
+      console.error(err);
+    } finally {
+      setUploadProgress(null);
+    }
   };
 
   const handleToggleScenario = async (id) => {
@@ -386,14 +430,27 @@ const AdminPanel = ({ data, setData }) => {
             {(showAddScenario || data.scenarios.length > 0) && (
               <div className="mb-8 p-4 border border-blue-200 rounded-lg bg-blue-50">
                 <h3 className="font-bold mb-4 text-blue-800">Nouveau Scénario</h3>
-                <input type="text" placeholder="Nom de la pièce (ex: Salon)" value={newScenarioName} onChange={e => setNewScenarioName(e.target.value)} className="border p-2 w-full mb-3 rounded focus:ring-2 focus:ring-blue-400 focus:outline-none"/>
-                <input type="file" accept="image/*" onChange={e => setNewScenarioImg(e.target.files[0])} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:font-semibold file:bg-white file:text-blue-700 hover:file:bg-gray-100 cursor-pointer mb-3"/>
-                <div className="flex gap-2">
-                  <button onClick={handleCreateScenario} className="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded">Créer le scénario</button>
-                  {data.scenarios.length > 0 && showAddScenario && (
-                    <button onClick={() => setShowAddScenario(false)} className="bg-gray-400 hover:bg-gray-500 text-white font-bold px-4 py-2 rounded">Annuler</button>
-                  )}
-                </div>
+                <input type="text" disabled={uploadProgress !== null} placeholder="Nom de la pièce (ex: Salon)" value={newScenarioName} onChange={e => setNewScenarioName(e.target.value)} className="border p-2 w-full mb-3 rounded focus:ring-2 focus:ring-blue-400 focus:outline-none disabled:opacity-50"/>
+                <input type="file" disabled={uploadProgress !== null} accept="image/*" onChange={e => setNewScenarioImg(e.target.files[0])} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:font-semibold file:bg-white file:text-blue-700 hover:file:bg-gray-100 cursor-pointer mb-3 disabled:opacity-50"/>
+                
+                {uploadProgress !== null ? (
+                  <div className="mb-4">
+                    <div className="flex justify-between text-sm text-blue-800 font-bold mb-1">
+                      <span>{typeof uploadProgress === 'number' ? 'Envoi en cours...' : uploadProgress}</span>
+                      {typeof uploadProgress === 'number' && <span>{uploadProgress}%</span>}
+                    </div>
+                    <div className="w-full bg-blue-200 rounded-full h-2.5">
+                      <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style={{ width: typeof uploadProgress === 'number' ? `${uploadProgress}%` : '100%' }}></div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <button onClick={handleCreateScenario} className="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded">Créer le scénario</button>
+                    {data.scenarios.length > 0 && showAddScenario && (
+                      <button onClick={() => setShowAddScenario(false)} className="bg-gray-400 hover:bg-gray-500 text-white font-bold px-4 py-2 rounded">Annuler</button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -406,24 +463,24 @@ const AdminPanel = ({ data, setData }) => {
             <ul className="space-y-4">
               {data.scenarios.map(s => (
                 <li key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-                  <div className="flex items-center mb-3 sm:mb-0">
-                    <img src={s.panoramaUrl} className="w-16 h-16 object-cover rounded mr-4 border" />
-                    <div>
-                      <p className="font-bold text-lg text-gray-800">{s.name}</p>
+                  <div className="flex items-center mb-3 sm:mb-0 overflow-hidden">
+                    <img src={s.panoramaUrl} className="w-16 h-16 object-cover rounded mr-4 border shrink-0" />
+                    <div className="truncate">
+                      <p className="font-bold text-lg text-gray-800 truncate">{s.name}</p>
                       <p className={`text-xs font-bold ${s.isHidden ? 'text-red-500' : 'text-green-500'}`}>{s.isHidden ? 'Masqué' : 'Visible'}</p>
                     </div>
                   </div>
                   <div className="flex gap-2 flex-wrap sm:flex-nowrap">
                     <button 
                       onClick={() => socket.emit('admin-select-scenario', s.id)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-bold transition-colors shadow-sm shadow-blue-500/30"
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm font-bold transition-colors shadow-sm shadow-blue-500/30 whitespace-nowrap"
                     >
                       Projeter (VR)
                     </button>
-                    <button onClick={() => handleToggleScenario(s.id)} className={`${s.isHidden ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 hover:bg-gray-600'} text-white px-3 py-1.5 rounded text-sm font-medium transition-colors`}>
+                    <button onClick={() => handleToggleScenario(s.id)} className={`${s.isHidden ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500 hover:bg-gray-600'} text-white px-3 py-1.5 rounded text-sm font-medium transition-colors whitespace-nowrap`}>
                       {s.isHidden ? 'Afficher' : 'Masquer'}
                     </button>
-                    <button onClick={() => handleDeleteScenario(s.id)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors">Supprimer</button>
+                    <button onClick={() => handleDeleteScenario(s.id)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors whitespace-nowrap">Supprimer</button>
                   </div>
                 </li>
               ))}
