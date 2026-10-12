@@ -1,63 +1,60 @@
-# Quick Start & Duck DNS Connection Guide
+# Djef Multi-Service 24/7 Production & Auto-Boot Guide
 
-This guide explains how to start the **VR Architecture Portfolio** server, auto-update your Duck DNS IP, and connect both VR headsets and the Admin Control Room.
-
----
-
-## 1. Quickest Method: 1-Click Batch File (No Editor Needed)
-
-Double-click **`start.bat`** in the project folder (`c:\dev\djef folder\vr model\virtual-toor\start.bat`).
-It will automatically:
-1. Update your IP address for `djef.duckdns.org`.
-2. Start the Node.js server.
-3. Open the Admin Control Room in your browser (`http://localhost:8080/#admin`).
+This system runs **VR Architecture Portfolio** (with ngrok HTTPS tunnel) and **Djef ERP Immo** (Local LAN) simultaneously, with **watchdog supervisors** that prevent crashes and an **Auto-Boot PC key** that starts both systems as soon as the computer powers on.
 
 ---
 
-## 2. Command Line Instructions (Manual)
+## 1. Quick Start Methods
 
-Open your terminal in the project root directory (`c:\dev\djef folder\vr model\virtual-toor`):
-
-### **Step 1: Update Duck DNS**
-```bash
-curl "https://www.duckdns.org/update?domains=djef&token=a50ac9a8-2234-451d-b0e1-742de300fd9a"
-```
-
-### **Step 2: Start the Web Server**
-```bash
-npm start
-```
-> **Note:** The server starts on port `8080`.
+### Option A: Automatic 24/7 PC Startup (Recommended)
+You only need to run this once:
+1. Double-click **`Install_PC_Startup_Key.bat`** located in `C:\dev\djef folder\`.
+2. It registers both services in the **Windows Registry Startup Run Key** (`HKCU\...\Run`) and the **Windows Startup Folder**.
+3. **From now on: Whenever you turn on or reboot your computer, both VR Portfolio (ngrok) and ERP Immo (local) will start automatically in the background and stay on 24/7.**
 
 ---
 
-## 3. Connecting Devices & Dashboard
-
-Your active public URL:
-**`http://djef.duckdns.org:8080`**
-
-*(Note: You must ensure port `8080` is forwarded to your PC's local IP address on your home router for this to work externally.)*
-
-### **A. VR Viewer Session (VR Headsets / Mobile / Remote Clients)**
-* **URL:** `http://djef.duckdns.org:8080`
-* **Instructions:**
-  1. Open the URL in your VR headset browser (e.g. Meta Quest Browser).
-  2. Click the **"ENTER VR"** button.
-  3. The headset will load the 360° panorama and stream head-rotation data to the Admin dashboard.
+### Option B: 1-Click Desktop Icon
+Double-click the **`Djef Master Start (24-7)`** icon on your Desktop (or run `C:\dev\djef folder\Master_Start_All.bat`).
+* Starts the VR Portfolio on port `8080` with the ngrok HTTPS tunnel.
+* Starts Djef ERP Immo (Backend on port `3001` + Frontend on port `5173`).
+* Displays all active local and remote URLs on screen.
 
 ---
 
-### **B. Admin Control Room (PC Controller Session)**
-* **URL:** `http://djef.duckdns.org:8080/#admin` (or `http://localhost:8080/#admin` locally)
-* **Instructions:**
-  1. Open the URL in your PC browser.
-  2. View active connected VR sessions and their live 3D gaze tracking preview.
-  3. Upload new 360° panoramas.
-  4. Click any scene card to instantly project it to all connected VR viewers.
+### Option C: Silent Invisible Mode (Never Turns Off)
+Double-click **`Master_Start_Silent.vbs`** in `C:\dev\djef folder\`.
+* Launches both systems invisibly in the background.
+* **No command prompt windows are displayed**, meaning employees or users cannot accidentally close the servers by clicking "X".
 
 ---
 
-## 4. Local Network Access (Alternative)
-If all devices are connected to the same Wi-Fi network, you can bypass Duck DNS and use your local PC IP address:
-* **Viewer:** `http://<YOUR_LOCAL_IP>:8080`
-* **Admin:** `http://<YOUR_LOCAL_IP>:8080/#admin`
+## 2. Service Access & Endpoints
+
+| Service | Mode | URL | Purpose |
+| :--- | :--- | :--- | :--- |
+| **VR Viewer (Headset)** | Remote / Internet | `https://<id>.ngrok-free.app` | Meta Quest 360° VR Cinema Mode (SSL/WebXR enabled) |
+| **VR Admin Control Room**| Remote / Internet | `https://<id>.ngrok-free.app/#admin` | Remote project & scenario switching |
+| **VR Admin (Local PC)** | Local Host | `http://localhost:8080/#admin` | PC Control Room for live headset mirroring |
+| **ERP Immo Frontend** | Local Host / LAN | `http://localhost:5173` | React ERP Web UI |
+| **ERP Immo Backend** | Local Host / LAN | `http://localhost:3001` | Express API, SQLite & WebSocket server |
+| **ngrok Tunnel Monitor** | Local Host | `http://127.0.0.1:4040` | View live ngrok status, requests, and tunnel URLs |
+
+---
+
+## 3. High Availability ("Never Turn Off")
+
+Both systems are monitored by automated Node.js **watchdog supervisors**:
+* **`vr model/virtual-toor/watchdog.js`**: Continuously supervises the port 8080 web server and the ngrok tunnel process. If a network interruption or error stops either process, it automatically restarts it in 2 seconds.
+* **`erp immo/watchdog_all.js`**: Continuously supervises the backend (port 3001) and frontend (port 5173). Any crash is logged to `erp_supervisor.log` and the server is restarted immediately.
+
+---
+
+## 4. How to Stop the Servers
+
+If you need to perform maintenance or stop all services:
+1. Double-click **`Djef Master Stop`** on your Desktop (or `C:\dev\djef folder\Master_Stop_All.bat`).
+2. This stops all background `node.exe` and `ngrok.exe` processes cleanly.
+
+To disable auto-start on PC boot at any time, run:
+`C:\dev\djef folder\Uninstall_PC_Startup_Key.bat`.

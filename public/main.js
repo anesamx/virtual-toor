@@ -1,7 +1,9 @@
 const { useState, useEffect, useRef } = React;
 
 // Initialize Socket.io client
-const socket = io();
+const socket = io({
+  transports: ['websocket', 'polling']
+});
 
 // (Text canvas helper removed since 3D VR menu was deleted)
 

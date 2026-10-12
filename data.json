@@ -2,12 +2,6 @@
   "images": [],
   "scenarios": [
     {
-      "id": "scen-1784559907942",
-      "name": "aze'r",
-      "panoramaUrl": "/uploads/1784559907908-959238436.png",
-      "isHidden": false
-    },
-    {
       "id": "scen-1784804695359",
       "name": "1",
       "panoramaUrl": "/uploads/1784804692275-90102047.jpg",
