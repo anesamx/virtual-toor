@@ -54,15 +54,25 @@ function checkAndStartServer() {
   });
 }
 
+const SHARED_BIN_DIR = path.resolve(__dirname, '..', '..', 'bin');
+const SHARED_NGROK_EXE = path.join(SHARED_BIN_DIR, 'ngrok.exe');
+const SHARED_NGROK_CONFIG = path.join(SHARED_BIN_DIR, 'ngrok.yml');
+
 // 2. Supervise ngrok tunnel (port 8080)
 function startNgrok() {
   if (isShuttingDown) return;
   log('🌐 [NGROK] Starting ngrok http 8080...');
   
-  ngrokProc = spawn('ngrok', ['http', '8080'], {
+  const ngrokExe = fs.existsSync(SHARED_NGROK_EXE) ? SHARED_NGROK_EXE : 'ngrok';
+  const args = ['http', '8080'];
+  if (fs.existsSync(SHARED_NGROK_CONFIG)) {
+    args.push('--config', SHARED_NGROK_CONFIG);
+  }
+  
+  ngrokProc = spawn(ngrokExe, args, {
     cwd: __dirname,
     stdio: 'ignore', // run cleanly in background
-    shell: true,
+    shell: false,
     env: process.env
   });
 

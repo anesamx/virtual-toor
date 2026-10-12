@@ -25,34 +25,40 @@ The system provides:
 
 ---
 
-## Current Plan: Master 24/7 Deployment & PC Auto-Startup
+## Previous Milestones
+* **Master 24/7 Deployment & PC Auto-Startup**: Implemented supervisor watchdogs, `Master_Start_All.bat`, `Master_Start_Silent.vbs`, and Windows startup registry integration.
 
-### Objective
-Create a unified, resilient launcher infrastructure that:
-1. Starts **VR Architecture Portfolio** on port 8080 and establishes the **ngrok** tunnel for remote access.
-2. Starts **Djef ERP Immo** on port 3001 (Backend) and port 5173 (Frontend) for local LAN operation.
-3. Ensures **zero downtime ("Never Turn Off")**:
-   - Both services are guarded by supervisor loops/watchdogs that automatically restart any crashed process in < 2 seconds.
-   - Scripts run silently in the background (preventing accidental terminal window closure) or in dedicated supervisory consoles.
-4. Auto-starts on **PC Boot ("PC ON" / Windows Startup Key)**:
-   - Registers a launcher shortcut in the Windows Startup directory (`shell:startup`) and/or the Windows Registry Run Key (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`).
+---
 
-### Actionable Implementation Steps
+## Current Plan: System Tray App ("Minbar" Bottom Bar) & Multi-User Decoupling (Djef Utilisateur)
 
-1. **Architecture & Watchdog Preparation**:
-   - Add a robust `watchdog.js` to `virtual-toor` that supervises both `server.js` (port 8080) and the `ngrok http 8080` tunnel process, automatically respawning them if disconnected or killed.
-   - Utilize the existing `watchdog.js` in `erp immo/server` and configure a persistent runner for `erp immo/client`.
+### 1. Objective
+1. **Decouple from User "ADNET"**:
+   - Make the entire system independent of any single Windows user profile so that deleting/switching user accounts does NOT delete binaries, auth tokens, or break auto-start.
+   - Store portable `ngrok.exe` and `ngrok.yml` inside `C:\dev\djef folder\bin\`.
+   - Update `virtual-toor/watchdog.js` to target portable binaries with explicit configuration paths.
+2. **System Tray / Bottom Bar Application ("Djef System Bar")**:
+   - Provide a native, zero-dependency Windows desktop application (`DjefSystemBar.exe`) compiled via built-in C# (`csc.exe`).
+   - Sits continuously in the bottom Windows taskbar notification tray ("minbar that appears from the bottom").
+   - When clicked, a sleek, modern, glassmorphic flyout panel pops up directly from the bottom bar showing:
+     - 🕶️ **VR Headset Public Link (ngrok)**: Live HTTPS link, live connection indicator, **[Copy Link]** and **[Open in Browser]** buttons.
+     - 👑 **Admin Control Room**: One-click **[Open Admin]** (`/#admin`).
+     - 🏢 **Djef ERP Immo**: One-click **[Open ERP Immo]** (`:5173`) and **[Backend API]** (`:3001`).
+     - 🌐 **Ngrok Dashboard**: One-click **[Open Dashboard]** (`:4040`).
+     - ⚡ **Service Controls**: One-click **[Restart All]**, **[Stop All]**, **[Start All]**.
+     - Auto-polls status every 3 seconds to keep links and indicators fresh.
+3. **Multi-User / All-Users Auto-Start**:
+   - Install for all users via `C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup` and public desktop `C:\Users\Public\Desktop` so user `djef` automatically has access upon logging in without needing user `ADNET`.
+   - When `DjefSystemBar.exe` launches, it also ensures background servers are running silently.
 
-2. **Master Launcher Creation (`Djef_Master_Start.bat` & `Djef_Master_Start_Silent.vbs`)**:
-   - Create a central master launcher script in `C:\dev\djef folder\` (or project root) that triggers both services in parallel.
-   - Provide both a **Console Monitor Mode** (for visual debugging with status outputs) and a **Silent Background Mode** (`.vbs`) so no terminal windows clutter the screen or get closed by mistake.
-
-3. **PC Boot / Windows Startup Key Configuration**:
-   - Provide an automatic installation script (`Install_Auto_Startup.bat`) that registers the master launcher in:
-     - Windows Startup folder: `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup`
-     - (Optional) Windows Registry Run Key: `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`
-   - When the user turns on the PC, both services launch instantly in the background without requiring any manual clicks.
-
-4. **Health Check & Controller Dashboard**:
-   - Provide a quick status checking utility / desktop shortcut to view the active ngrok URL and ERP status at any time (`http://127.0.0.1:4040` and local URLs).
-   - Update `HOW_TO_START.md` with complete instructions for managing, stopping, and verifying the 24/7 background services.
+### 2. Actionable Implementation Steps
+1. **Update `virtual-toor/watchdog.js`**:
+   - Use `C:\dev\djef folder\bin\ngrok.exe` and `--config "C:\dev\djef folder\bin\ngrok.yml"`.
+2. **Build `DjefSystemBar` (Native C# Windows Tray / Flyout Application)**:
+   - Design sleek UI with dark theme, smooth buttons, copy-to-clipboard animations, and system tray integration.
+   - Compile using `C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe`.
+3. **Multi-User Installer (`Install_System_App.bat`)**:
+   - Copy shortcuts to Public Desktop and All Users Startup folder.
+   - Provide UAC elevation if needed so standard users can also run it.
+4. **Validation**:
+   - Test compilation, tray icon appearance, link copying, browser launch, and service status polling.
